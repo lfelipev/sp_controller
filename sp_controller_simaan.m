@@ -1,4 +1,4 @@
-function [PIP, SP, COvec, w_rpm, EDP] = sp_controller_simaan(enable_preload, end_t)
+function [PIP, SP, COvec, w_rpm, EDP, SPdiff] = sp_controller_simaan(enable_preload, end_t)
     % close all
     clc
 
@@ -110,38 +110,74 @@ function [PIP, SP, COvec, w_rpm, EDP] = sp_controller_simaan(enable_preload, end
         ESVvec(i+1) = ESV;
         %SV = EDV - ESV;
         estado(i+1) = estado_atual;
-
-        if enable_preload
-            % Varia?ão da Pré-carga
-            if i < 80000 % 1a constante
-                Rm = 0.1;
-                cae(i+1) = Cae;
-                rm(i+1) = Rm;
-            % 8000 -> 12000 // Rm = Variavel e Cae = variavel
-            elseif i >= 80000 && i < 120000 % rampa de subida
-                Rm = -2.375e-6*i+0.29000000000000004;
-                %Cae = 1.8e-3*i -136;
-                cae(i+1) = Cae;
-                rm(i+1) = Rm;
-            % 12000 -> 32000 // Rm = 0.001 e Cae = 600
-            elseif i >= 120000 && i < 320000 % 2a constante
-                Rm = 0.005;
-                %Cae = 80;
-                cae(i+1) = Cae;
-                rm(i+1) = Rm;
-            % 32000 -> 40000 // Rm = variavel e Cae = 600
-            elseif i >= 320000 && i <= 400000 % rampa de descida
-                Rm = 3.0625e-6*i - 0.9749999999999999;
-                %Cae = 80;
-                cae(i+1) = Cae;
-                rm(i+1) = Rm;
-            elseif i >= 400000
-                Rm = 0.25;
-                %Cae = 80;
-                cae(i+1) = Cae;
-                rm(i+1) = Rm;
-            end
+if enable_preload
+        % Varia?ão da Pré-carga
+        if i < 160000 % 1a constante
+            Rm = 0.1;
+            cae(i+1) = Cae;
+            rm(i+1) = Rm;
+        % 8000 -> 12000 // Rm = Variavel e Cae = variavel
+        elseif i >= 160000 && i < 200000 % rampa de subida
+            Rm = -2.375e-6*i+0.48;
+            %Cae = 1.8e-3*i -136;
+            cae(i+1) = Cae;
+            rm(i+1) = Rm;
+        % 12000 -> 32000 // Rm = 0.001 e Cae = 600
+        elseif i >= 200000 && i < 400000 % 2a constante
+            Rm = 0.005;
+            %Cae = 80;
+            cae(i+1) = Cae;
+            rm(i+1) = Rm;
+        % 32000 -> 40000 // Rm = variavel e Cae = 600
+        elseif i >= 400000 && i <= 500000 % rampa de descida
+            Rm = 9.5e-7*i - 0.375;
+            %Cae = 80;
+            cae(i+1) = Cae;
+            rm(i+1) = Rm;
+        elseif i >= 500000 && i <= 700000
+            Rm = 0.1;
+            %Cae = 80;
+            cae(i+1) = Cae;
+            rm(i+1) = Rm;
+        elseif i >= 700000 && i <= 800000
+            Rm = 1.5e-6*i - 0.95;
+            rm(i+1) = Rm;
+        elseif i>=800000
+            Rm = 0.25;
+            rm(i+1) = Rm;
         end
+    end
+%         if enable_preload
+%             % Varia?ão da Pré-carga
+%             if i < 80000 % 1a constante
+%                 Rm = 0.1;
+%                 cae(i+1) = Cae;
+%                 rm(i+1) = Rm;
+%             % 8000 -> 12000 // Rm = Variavel e Cae = variavel
+%             elseif i >= 80000 && i < 120000 % rampa de subida
+%                 Rm = -2.375e-6*i+0.29000000000000004;
+%                 %Cae = 1.8e-3*i -136;
+%                 cae(i+1) = Cae;
+%                 rm(i+1) = Rm;
+%             % 12000 -> 32000 // Rm = 0.001 e Cae = 600
+%             elseif i >= 120000 && i < 320000 % 2a constante
+%                 Rm = 0.005;
+%                 %Cae = 80;
+%                 cae(i+1) = Cae;
+%                 rm(i+1) = Rm;
+%             % 32000 -> 40000 // Rm = variavel e Cae = 600
+%             elseif i >= 320000 && i <= 400000 % rampa de descida
+%                 Rm = 3.0625e-6*i - 0.9749999999999999;
+%                 %Cae = 80;
+%                 cae(i+1) = Cae;
+%                 rm(i+1) = Rm;
+%             elseif i >= 400000
+%                 Rm = 0.25;
+%                 %Cae = 80;
+%                 cae(i+1) = Cae;
+%                 rm(i+1) = Rm;
+%             end
+%         end
 
         % Enchimento - 1
         % Dm = 1, Da = 0
@@ -242,6 +278,8 @@ function [PIP, SP, COvec, w_rpm, EDP] = sp_controller_simaan(enable_preload, end
         Nref = 8000;
 
         w_rpm(i+1) = ksp*(SP(i) - SPref) + Nref;
+%         w_rpm(i+1) = w_rpm_2(i+1);
+        SPdiff(i+1) = (SP(i) - SPref);
        
         Pao(i+1) = x(1);
         Qa(i+1)  = x(2);

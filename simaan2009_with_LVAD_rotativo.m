@@ -1,11 +1,11 @@
-clearvars -except SP_constant w_rpm_constant EDP_constant COvec_constant SP_controlador w_rpm_controlador EDP_controlador COvec_controlador
+clearvars -except w_rpm_2 w_rpm_constant EDP_constant COvec_constant SP_controlador w_rpm_controlador EDP_controlador COvec_controlador
 % close all
 clc
 
 % Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 60;
+end_t   = 100;
 
 %Uses the already created Time scale
 T = start_t:passo:end_t;
@@ -114,35 +114,73 @@ for i = 1:n-1
     
     if enable_preload
         % Varia?ão da Pré-carga
-        if i < 80000 % 1a constante
+        if i < 160000 % 1a constante
             Rm = 0.1;
             cae(i+1) = Cae;
             rm(i+1) = Rm;
         % 8000 -> 12000 // Rm = Variavel e Cae = variavel
-        elseif i >= 80000 && i < 120000 % rampa de subida
-            Rm = -2.375e-6*i+0.29000000000000004;
+        elseif i >= 160000 && i < 200000 % rampa de subida
+            Rm = -2.375e-6*i+0.48;
             %Cae = 1.8e-3*i -136;
             cae(i+1) = Cae;
             rm(i+1) = Rm;
         % 12000 -> 32000 // Rm = 0.001 e Cae = 600
-        elseif i >= 120000 && i < 320000 % 2a constante
+        elseif i >= 200000 && i < 400000 % 2a constante
             Rm = 0.005;
             %Cae = 80;
             cae(i+1) = Cae;
             rm(i+1) = Rm;
         % 32000 -> 40000 // Rm = variavel e Cae = 600
-        elseif i >= 320000 && i <= 400000 % rampa de descida
-            Rm = 3.0625e-6*i - 0.9749999999999999;
+        elseif i >= 400000 && i <= 500000 % rampa de descida
+            Rm = 9.5e-7*i - 0.375;
             %Cae = 80;
             cae(i+1) = Cae;
             rm(i+1) = Rm;
-        elseif i >= 400000
-            Rm = 0.25;
+        elseif i >= 500000 && i <= 700000
+            Rm = 0.1;
             %Cae = 80;
             cae(i+1) = Cae;
+            rm(i+1) = Rm;
+        elseif i >= 700000 && i <= 800000
+            Rm = 1.5e-6*i - 0.95;
+            rm(i+1) = Rm;
+        elseif i>=800000
+            Rm = 0.25;
             rm(i+1) = Rm;
         end
-    end
+    end 
+    
+%     if enable_preload
+%         % Varia?ão da Pré-carga
+%         if i < 80000 % 1a constante
+%             Rm = 0.1;
+%             cae(i+1) = Cae;
+%             rm(i+1) = Rm;
+%         % 8000 -> 12000 // Rm = Variavel e Cae = variavel
+%         elseif i >= 80000 && i < 120000 % rampa de subida
+%             Rm = -2.375e-6*i+0.29000000000000004;
+%             %Cae = 1.8e-3*i -136;
+%             cae(i+1) = Cae;
+%             rm(i+1) = Rm;
+%         % 12000 -> 32000 // Rm = 0.001 e Cae = 600
+%         elseif i >= 120000 && i < 320000 % 2a constante
+%             Rm = 0.005;
+%             %Cae = 80;
+%             cae(i+1) = Cae;
+%             rm(i+1) = Rm;
+%         % 32000 -> 40000 // Rm = variavel e Cae = 600
+%         elseif i >= 320000 && i <= 400000 % rampa de descida
+%             Rm = 3.0625e-6*i - 0.9749999999999999;
+%             %Cae = 80;
+%             cae(i+1) = Cae;
+%             rm(i+1) = Rm;
+%         elseif i >= 400000
+%             Rm = 0.25;
+%             %Cae = 80;
+%             cae(i+1) = Cae;
+%             rm(i+1) = Rm;
+%         end
+%     end 
    
     % Enchimento - 1
     % Dm = 1, Da = 0
@@ -254,15 +292,15 @@ end
 EDP(i+1) = EDP(i);
 PIP(i+1) = PIP(i);
 Aux(i+1) = Aux(i);
-
+%%
 % PIP plot
 figure(1)
 plot(T, SP, '-k','LineWidth', 2);
 hold on
 plot(T,PIP, 'Color', '#777777')
 ylim([0 150])
-xlim([0 45])
-xticks([0 20 40 60])
+xlim([0 100])
+xticks([0 20 40 60 100])
 yticks([0 50 100 150])
 legend('Pump inlet pressure', 'Systolic pressure')
 xlabel('Time (s)')
@@ -276,9 +314,9 @@ plot(T, COvec, 'Color', '#777777','LineWidth', 2)
 ylim([0 10])
 yticks([0 2.5 5 7.5 10])
 ylabel('CO (L/min)')
-xticks([0 20 40 60])
+xticks([0 20 40 60 100])
 grid on
-xlim([0 45])
+xlim([0 100])
 title('Preload variation')
 legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
 legend('boxoff')
@@ -289,37 +327,38 @@ ylim([0 150])
 yticks([0 50 100 150])
 xticks([0 20 40 60])
 grid on
-xlim([0 45])
+xlim([0 100])
 xlabel('Time(s)')
 ylabel('SP (mm Hg)')
 legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
 legend('boxoff')
 
 %%
-[PIP_phis, SP_phis, COvec_phis, EDP_phis] = physiological_simaan(1, 60);
-[PIP_controlador, SP_controlador, COvec_controlador, w_rpm_controlador, EDP_controlador] = sp_controller_simaan(1, 60);
+[PIP_phis, SP_phis, COvec_phis, EDP_phis] = physiological_simaan(1, 100);
+[PIP_controlador, SP_controlador, COvec_controlador, w_rpm_controlador, EDP_controlador, SPdiff] = sp_controller_simaan(1, 100);
 COvec_constant = COvec;
 SP_constant = SP;
 w_rpm_constant = w_rpm;
 EDP_constant = EDP;
 
-%% Plot do petrou
-figure(2)
 
-subplot(4,1,1);
+%% Plot do petrou
+figure(1)
+
+subplot(2,1,1);
 plot(T, w_rpm_controlador/1000, 'k')
 hold on
 plot(T, w_rpm_constant/1000, '-k', 'LineWidth', 2)
 title('Preload variation')
 ylabel('Pump Speed (krpm)')
 ylim([6 9.5])
-xlim([0 45])
+xlim([0 100])
 yticks([2 3 4 5 6])
 xticks([0 20 40 60])
 legend('SP controller', 'Constant speed');
 grid on
 
-subplot(4,1,2);
+subplot(2,1,2);
 plot(T,COvec_controlador, 'k')
 hold on
 plot(T,COvec_constant, '-k', 'LineWidth', 2);
@@ -327,13 +366,14 @@ ylabel('CO (L/min)')
 hold on
 plot(T,COvec_phis, ':k', 'LineWidth', 2);
 ylim([1 9])
-xlim([0 45])
+xlim([0 100])
 yticks([1 3 5 7 9])
 xticks([0 20 40 60])
 legend('SP controller', 'Constant speed', 'Physiological');
 grid on
 
-subplot(4,1,3);
+figure(2)
+subplot(2,1,1);
 plot(T,SP_controlador, 'k')
 hold on
 plot(T, SP_constant, '-k','LineWidth', 2);
@@ -341,13 +381,13 @@ hold on
 plot(T,SP_phis, ':k', 'LineWidth', 2);
 ylabel('SP (mm Hg)')
 ylim([50 150])
-xlim([0 45])
+xlim([0 100])
 yticks([0 50 100 150 200])
 xticks([0 20 40 60])
 legend('SP controller', 'Constant speed', 'Physiological');
 grid on
 
-subplot(4,1,4);
+subplot(2,1,2);
 plot(T,EDP_controlador, 'k')
 hold on
 plot(T, EDP_constant, '-k', 'LineWidth', 2);
@@ -357,7 +397,7 @@ ylabel('EDP (mm Hg)')
 xlabel('Time (s)')
 legend('SP controller', 'Constant speed', 'Physiological');
 ylim([30 90])
-xlim([0 45])
+xlim([0 100])
 xticks([0 20 40 60])
 yticks([0 10 20 30 40 50 60 70 80 90])
 grid on
