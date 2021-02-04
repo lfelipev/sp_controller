@@ -5,7 +5,7 @@ clc
 % Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 100;
+end_t   = 120;
 
 %Uses the already created Time scale
 T = start_t:passo:end_t;
@@ -71,10 +71,14 @@ w_rpm(1) = 6100;
 estado_atual = 3;
 d_PIP(1) = 0; % derivada do PIP
 SP      = zeros(1,length(T));
+rs = ones(1, length(T));
 EDP(1) = Pve(1);
 Aux(1) = 40;
 estado(1) = 0;
 enable_preload = 1;
+rm(1) = 0.1;
+SP(1) = 1;
+PIP(1) = 0;
 
 for i = 1:n-1
 
@@ -120,35 +124,32 @@ for i = 1:n-1
             rm(i+1) = Rm;
         % 8000 -> 12000 // Rm = Variavel e Cae = variavel
         elseif i >= 160000 && i < 200000 % rampa de subida
-            Rm = -2.375e-6*i+0.48;
+            Rm = -5e-7*i+0.18;
             %Cae = 1.8e-3*i -136;
             cae(i+1) = Cae;
             rm(i+1) = Rm;
-        % 12000 -> 32000 // Rm = 0.001 e Cae = 600
-        elseif i >= 200000 && i < 400000 % 2a constante
-            Rm = 0.005;
-            %Cae = 80;
-            cae(i+1) = Cae;
+        elseif i>= 200000 && i < 300000
+            Rm = 0.08;
             rm(i+1) = Rm;
-        % 32000 -> 40000 // Rm = variavel e Cae = 600
-        elseif i >= 400000 && i <= 500000 % rampa de descida
-            Rm = 9.5e-7*i - 0.375;
-            %Cae = 80;
-            cae(i+1) = Cae;
+        elseif i >= 300000 && i < 400000
+            Rm = 1e-7*i+0.05;
             rm(i+1) = Rm;
-        elseif i >= 500000 && i <= 700000
-            Rm = 0.1;
-            %Cae = 80;
-            cae(i+1) = Cae;
-            rm(i+1) = Rm;
-        elseif i >= 700000 && i <= 800000
-            Rm = 1.5e-6*i - 0.95;
-            rm(i+1) = Rm;
-        elseif i>=800000
-            Rm = 0.25;
+        elseif i>= 400000
+            Rm = 0.09;
             rm(i+1) = Rm;
         end
-    end 
+    end
+    
+    if i >= 600000 && i < 700000
+        rs(i) = -5e-6 * i + 4;
+    elseif i>= 700000 && i < 800000
+        rs(i) = 0.5;
+    elseif i >= 800000 && i<900000
+        rs(i) = 2.5e-6 * i - 1.5;
+    elseif i >= 900000
+        rs(i) = 0.75;
+    end
+    Rs = rs(i);
     
 %     if enable_preload
 %         % Varia?ão da Pré-carga
@@ -180,7 +181,7 @@ for i = 1:n-1
 %             cae(i+1) = Cae;
 %             rm(i+1) = Rm;
 %         end
-%     end 
+%     end
    
     % Enchimento - 1
     % Dm = 1, Da = 0
@@ -237,18 +238,12 @@ for i = 1:n-1
     % O fator w^2 está correto?
     x6dot(i) = (-1*x(1) + E(i)*x(3) -RR*x(6) + (-(E(i)*Vo) - B2*w^2))/LL;
 
+    % 
     PIP(i) = Pve(i) - Li*x6dot(i) - Ri*x(6);
-    if i > 4
-        PIPft(i) = 2.9987*PIPft(i-1) - 2.9987*PIPft(i-2) + 0.9987*PIPft(i-3) + 0.06e-8*PIP(i);
-    else
-        PIPft(i) = PIP(i);
-    end
-    PIPf(i) = PIP(i);
-    
     if i > 1
-        d_PIPf(i) = (PIPf(i) - PIPf(i-1))/passo;
-        if d_PIPf(i-1) >= 0.01 && d_PIPf(i) < -0.01
-            SP(i) = PIPf(i);
+        d_PIP(i) = (PIP(i) - PIP(i-1))/passo;
+        if d_PIP(i-1) >= 0.01 && d_PIP(i) < -0.01
+            SP(i) = PIP(i);
         else
             SP(i) = SP(i-1);
         end
@@ -258,10 +253,8 @@ for i = 1:n-1
         if(estado_anterior ~= estado_atual && estado_anterior == 2)
             % Encontrar a EDP
             EDP(i) = PIP(i);
-            Aux(i) = 40;
         else
             EDP(i) = EDP(i-1);
-            Aux(i) = 30;
         end
     end
 
@@ -272,10 +265,9 @@ for i = 1:n-1
     %w_rpm(i+1) = 100*passo + w_rpm(i); % rpm
     %w_rpm(i+1) = 8195;
     phase = 0; % pi/4;
+ 
     
-    SPref = 87.1316;
-    
-    w_rpm(i+1) = 8000;
+    w_rpm(i+1) = 8660;
     
     Pao(i+1) = x(1);
     Qa(i+1)  = x(2);
@@ -291,22 +283,48 @@ for i = 1:n-1
 end
 EDP(i+1) = EDP(i);
 PIP(i+1) = PIP(i);
-Aux(i+1) = Aux(i);
+rs(i+1) = 0.75;
+SP(i+1) = SP(i);
 %%
 % PIP plot
 figure(1)
 plot(T, SP, '-k','LineWidth', 2);
 hold on
-plot(T,PIP, 'Color', '#777777')
-ylim([0 150])
-xlim([0 100])
-xticks([0 20 40 60 100])
-yticks([0 50 100 150])
-legend('Pump inlet pressure', 'Systolic pressure')
-xlabel('Time (s)')
-ylabel('PIP (mm Hg)')
-title('Preload variation')
+plot(T,PIP, 'Color', '#777777');
+ylim([0 120])
+xlim([0 120])
+xticks([0 20 30 40 60 70 80 90 120])
+yticks([0 50 100 120])
+legend('PIP', 'SP')
+xlabel('Time (s)','interpreter','latex')
+ylabel('Pressure (mmHg)','interpreter','latex')
+set(gca,'FontSize',14)
+set(gca,'fontname','times')
+grid on
 
+%%
+figure(1)
+subplot(2, 1, 1);
+plot(T, rm,'-k','LineWidth', 2)
+grid on
+ylim([0.07 0.11])
+yticks([0.08 0.09 0.1])
+xticks([0 16 20 30 40 120])
+ylabel('$R_m$','interpreter','latex')
+set(gca,'FontSize',16)
+set(gca,'fontname','times')
+
+subplot(2, 1, 2);
+plot(T, rs, '-k','LineWidth', 2)
+grid on
+ylim([0.4 1.1])
+xticks([0 60 70 80 90 120])
+yticks([0.5 0.75 1])
+xlabel('Time (s)')
+ylabel('$R_s$','interpreter','latex')
+set(gca,'FontSize',16)
+set(gca,'fontname','times')
+%%
 % Cardiac Output Plot
 figure(2)
 subplot(2, 1, 1)
@@ -333,14 +351,48 @@ ylabel('SP (mm Hg)')
 legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
 legend('boxoff')
 
+
 %%
-[PIP_phis, SP_phis, COvec_phis, EDP_phis] = physiological_simaan(1, 100);
-[PIP_controlador, SP_controlador, COvec_controlador, w_rpm_controlador, EDP_controlador, SPdiff] = sp_controller_simaan(1, 100);
+% COphy + Petrou + Constant
+tempo = 120;
+[PIP_phis, SP_phis, COvec_phis, EDP_phis, Pas_phis, rs_phis] = physiological_simaan(1, tempo);
+[rs, Qvad, Vve, EDVvec, ESVvec, Pve_controlador, x6dot, PIP_controlador, SP_controlador, COvec_controlador, w_rpm_controlador, EDP_controlador, Pas_controlador] = sp_controller_simaan(1, tempo);
+[kspvec, Pve_vgcontrolador, PIP_vgcontrolador, SP_vgcontrolador, COvec_vgcontrolador, w_rpm_vgcontrolador, EDP_vgcontrolador, Pas_vgcontrolador] = vgsp_controller_simaan(1, tempo, COvec_phis, SP_phis);
+
 COvec_constant = COvec;
 SP_constant = SP;
 w_rpm_constant = w_rpm;
 EDP_constant = EDP;
+Pas_constant = Pas;
+%%
+plot(T, COvec_phis, T, COvec_controlador, T, COvec_constant)
 
+
+%%
+plot(T, COvec_phis, 'Color', '#777777', 'LineWidth', 3)
+hold on
+plot(T, COvec_vgcontrolador, ':k', 'LineWidth', 2)
+hold on
+legend('CO_{phy}', 'CO', 'Location', 'southeast')
+ylim([3 6])
+ylabel('CO (L/min)', 'interpreter','latex')
+xlabel('Time(s)', 'interpreter','latex')
+set(gca,'FontSize',14)
+set(gca,'fontname','times')
+grid on
+%%
+plot(T, COvec_phis, 'Color', '#777777', 'LineWidth', 3)
+hold on
+plot(T, COvec_controlador, ':k', 'LineWidth', 2)
+hold on
+plot(T, COvec_constant, '--k', 'LineWidth', 2)
+legend('CO_{phy}', 'CO_{SP}', 'CO_{con}', 'Location', 'southeast')
+ylim([3 6])
+ylabel('CO (L/min)', 'interpreter','latex')
+xlabel('Time(s)', 'interpreter','latex')
+set(gca,'FontSize',14)
+set(gca,'fontname','times')
+grid on
 
 %% Plot do petrou
 figure(1)
@@ -365,12 +417,14 @@ plot(T,COvec_constant, '-k', 'LineWidth', 2);
 ylabel('CO (L/min)')
 hold on
 plot(T,COvec_phis, ':k', 'LineWidth', 2);
-ylim([1 9])
+ylim([0 9])
 xlim([0 100])
 yticks([1 3 5 7 9])
 xticks([0 20 40 60])
 legend('SP controller', 'Constant speed', 'Physiological');
 grid on
+hold on
+plot(T, rs)
 
 figure(2)
 subplot(2,1,1);
@@ -401,6 +455,29 @@ xlim([0 100])
 xticks([0 20 40 60])
 yticks([0 10 20 30 40 50 60 70 80 90])
 grid on
+
+figure(3)
+subplot(3, 1, 1);
+plot(T, Pas_phis, 'k');
+legend('Phisiological');
+ylabel('Pas (mm Hg)')
+grid on
+title('Pressão Arterial Sistêmica')
+
+subplot(3, 1, 2);
+plot(T, Pas_controlador, 'k')
+ylabel('Pas (mm Hg)')
+legend('Constant speed');
+grid on
+
+subplot(3, 1, 3);
+plot(T, Pas_constant, 'k');
+ylabel('Pas (mm Hg)')
+xlabel('Time (s)')
+grid on
+legend('SP controller');
+
+
 %% Filtering
 % 
 % fs = 1/passo;
