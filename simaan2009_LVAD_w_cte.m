@@ -1,25 +1,28 @@
-function [rs, Qvad, Vve, EDVvec, ESVvec, Pve, ...
-          x6dot, PIP, SP, COvec, w_rpm, EDP, Pas] = sp_controller_simaan(enable_preload, end_t)
+clear
+close all
+clc
 
+global Da Dm Rs Rm Ra Rc Cae Cs Cao Ls RR LL Vo B2 alpha
 
-% Simulation Time;
+%% Simulation Time;
 start_t = 0;
 passo   = 0.0001;
+end_t   = 120;
 
-%Uses the already created Time scale
+% Uses the already created Time scale
 T = start_t:passo:end_t;
 n = length(T);
 
-% Cardiovascular system
-HR = 75; %75
-Emax = 2; %1.5
-Emin = 0.05;
+%% Cardiovascular system
+HR = 90;
+Emax = 1.50;
+Emin = 0.06;
 En = Elastance(T,passo,HR,end_t);
 E = (Emax - Emin)*En + Emin;
 
 % Cardiovascular system model parameters (from Simaan2009);
 Rs  = 1.0000; % (0.83-normal,weak; 1.4-severly weak without pump; 0.83-severly weak with pump)(mmHg.sec/mL)
-Rm  = 0.1; % Rm-mitral valve open;(mmHg.sec/mL)
+Rm  = 0.1000; % Rm-mitral valve open;(mmHg.sec/mL)
 Ra  = 0.0010; % Ra-aortic valve open;(mmHg.sec/mL)
 Rc  = 0.0398; % Rc-characteristic resistance;(mmHg.sec/mL)
 Cae = 4.4000; % Cr-pulmonary compliance;(mL/mmHg)
@@ -41,6 +44,8 @@ B2 = -9.9025e-5;
 LL = Li + Lo + B1;
 alpha = -3.5;
 
+Vo = 10;
+
 % Initial Conditions
 Pao(1)  = 90;
 Qa(1)   = 0;
@@ -48,8 +53,6 @@ Vve(1)  = 140;
 Pas(1)  = 90;
 Pae(1)  = 5;
 Qvad(1) = 0; % x6 - LVAD flow
-
-Pve(1) = E(1)*(Vve(1) - Vo);
 
 %x = [  x1     x2      x3      x4      x5        x6  ]';
 x =  [Pao(1)  Qa(1)  Vve(1)  Pas(1)  Pae(1)   Qvad(1)]';
@@ -60,19 +63,44 @@ Dm = 0; Da = 0;
 CO = 0;
 EDV = 0;
 ESV = 0;
-% Simulation
-w_rpm = zeros(1, end_t/passo+1);
-w_rpm(1) = 6100;
+
+% constant speed
+
+w_rpm = 7515;
+w = (w_rpm*2*pi/60);
+
 estado_atual = 3;
-d_PIP(1) = 0; % derivada do PIP
 SP      = zeros(1,length(T));
-rs = ones(1, length(T));
 
-EDP(1) = Pve(1);
-Aux(1) = 40;
+rs  = ones(1, length(T));
+rm  = zeros(1, length(T));
+cae = zeros(1, length(T));
+
+Pao = zeros(1, length(T));
+Qa  = zeros(1, length(T));
+Vve = zeros(1, length(T));
+Pas = zeros(1, length(T));
+Pae = zeros(1, length(T));
+Qvad = zeros(1, length(T));
+
+Pve  = zeros(1, length(T));
+
+PIP = zeros(1, length(T));
+d_PIP  = zeros(1, length(T));
+COvec  = zeros(1, length(T));
+EDVvec = zeros(1, length(T));
+ESVvec = zeros(1, length(T));
+estado = zeros(1, length(T));
+
 estado(1) = 0;
+enable_preload = 1;
+rm(1) = 0.1;
+SP(1) = 1;
+PIP(1) = 0;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i = 1:n-1
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if Pae(i) >= Pve(i)
     Dm = 1;
@@ -87,6 +115,7 @@ else
 end
 
 estado_anterior = estado_atual;
+
 if (Dm == 1 && Da == 0) && (estado_atual == 4)
     estado_atual = 1; % se o estado atual é Relaxamento(4), vai p/ Enchimento(1)
     ESV = Vve(i);
@@ -105,11 +134,11 @@ end
 COvec(i+1) = ((EDV-ESV) * HR) / 1000;
 EDVvec(i+1) = EDV;
 ESVvec(i+1) = ESV;
-%SV = EDV - ESV;
+
 estado(i+1) = estado_atual;
 
+% Variação da Pré-carga
 if enable_preload
-    % Varia?ão da Pré-carga
     if i < 160000 % 1a constante
         Rm = 0.1;
         cae(i+1) = Cae;
@@ -132,6 +161,7 @@ if enable_preload
     end
 end
 
+% Variação da Pós-carga
 if i >= 600000 && i < 700000
     rs(i) = -5e-6 * i + 4;
 elseif i>= 700000 && i < 800000
@@ -143,18 +173,13 @@ elseif i >= 900000
 end
 Rs = rs(i);
 
-w = (w_rpm(i)*2*pi/60); % rad/s
-
-%Rk
+% Rk
 if Pve(i) > 1 % x1_
     Rk = 0;
 else
-    Rk = 0;
-    %Rk = alpha*(Pve(i) - 1);
+    Rk = 0; % alpha*(Pve(i) - 1);
 end
-
 RR = Ri + Ro + Rk + Bo;
-%RR = Ri + Ro + Bo;
 
 xdot = xdot_fun(x,E(i),w);
 
@@ -168,25 +193,7 @@ if i > 1
     end
 end
 
-if i > 1
-    if(estado_anterior ~= estado_atual && estado_anterior == 2)
-        % Encontrar a EDP
-        EDP(i) = PIP(i);
-        Aux(i) = 40;
-    else
-        EDP(i) = EDP(i-1);
-        Aux(i) = 30;
-    end
-end
-
 x = runkut42(x,xdot,E(i),w,passo);
-
-% SP-controller
-SPref = 83.66;
-Nref = 8660;
-ksp = 50;
-
-w_rpm(i+1) = ksp*(SP(i) - SPref) + Nref;
 
 Pao(i+1) = x(1);
 Qa(i+1)  = x(2);
@@ -195,11 +202,77 @@ Pas(i+1) = x(4);
 Pae(i+1) = x(5);
 Qvad(i+1)= x(6);
 
-x6dot = xdot(6,1);
-
 Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
 end
-EDP(i+1) = EDP(i);
 PIP(i+1) = PIP(i);
-Aux(i+1) = Aux(i);
-end
+rs(i+1) = 0.75;
+SP(i+1) = SP(i);
+
+COvec_w_cte = COvec;
+SP_w_cte    = SP;
+
+%%
+save('simaan2009_LVAD_w_cte.mat','COvec_w_cte','SP_w_cte')
+
+%% PIP plot
+figure(1)
+plot(T, SP, '-k','LineWidth', 2);
+hold on
+plot(T,PIP, 'color',[0.5 0.5 0.5]);
+ylim([0 120])
+xlim([0 120])
+xticks([0 20 30 40 60 70 80 90 120])
+yticks([0 50 100 120])
+legend('PIP', 'SP')
+xlabel('Time (s)','interpreter','latex')
+ylabel('Pressure (mmHg)','interpreter','latex')
+set(gca,'FontSize',14)
+set(gca,'fontname','times')
+grid on
+
+%%
+figure(2)
+subplot(2, 1, 1);
+plot(T, rm,'-k','LineWidth', 2)
+grid on
+ylim([0.07 0.11])
+yticks([0.08 0.09 0.1])
+xticks([0 16 20 30 40 120])
+ylabel('$R_m$','interpreter','latex')
+set(gca,'FontSize',16)
+set(gca,'fontname','times')
+
+subplot(2, 1, 2);
+plot(T, rs, '-k','LineWidth', 2)
+grid on
+ylim([0.4 1.1])
+xticks([0 60 70 80 90 120])
+yticks([0.5 0.75 1])
+xlabel('Time (s)')
+ylabel('$R_s$','interpreter','latex')
+set(gca,'FontSize',16)
+set(gca,'fontname','times')
+%%
+% Cardiac Output Plot
+figure(3)
+subplot(2, 1, 1)
+plot(T, COvec, 'Color', [0.5 0.5 0.5],'LineWidth', 2)
+ylabel('CO (L/min)')
+xticks([0 20 40 60 100])
+grid on
+axis([0 120 3 6])
+title('Preload variation')
+legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
+legend('boxoff')
+
+subplot(2,1,2)
+plot(T, SP,'Color',[0.5 0.5 0.5],'LineWidth', 2)
+ylim([0 150])
+yticks([0 50 100 150])
+xticks([0 20 40 60])
+grid on
+xlim([0 100])
+xlabel('Time(s)')
+ylabel('SP (mm Hg)')
+legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
+legend('boxoff')

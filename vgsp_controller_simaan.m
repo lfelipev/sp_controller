@@ -6,8 +6,6 @@ function [kspvec, Pve, ...
     % Simulation Time;
     start_t = 0;
     passo   = 0.0001;
-
-    
     
     %Uses the already created Time scale
     T = start_t:passo:end_t;

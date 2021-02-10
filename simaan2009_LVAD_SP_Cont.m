@@ -1,31 +1,36 @@
-function [rs, Qvad, Vve, EDVvec, ESVvec, Pve, ...
-          x6dot, PIP, SP, COvec, w_rpm, EDP, Pas] = sp_controller_simaan(enable_preload, end_t)
+clear
+close all
+clc
 
+global Rs Ra Rm Rc Cao Cs Cae Ls Dm Da Vo RR LL B2
 
-% Simulation Time;
+%% Simulation Time;
 start_t = 0;
 passo   = 0.0001;
+end_t   = 120;
 
 %Uses the already created Time scale
 T = start_t:passo:end_t;
 n = length(T);
 
-% Cardiovascular system
-HR = 75; %75
-Emax = 2; %1.5
-Emin = 0.05;
+%% Cardiovascular system
+HR = 90;
+Emax = 1.50;
+Emin = 0.06;
 En = Elastance(T,passo,HR,end_t);
 E = (Emax - Emin)*En + Emin;
 
 % Cardiovascular system model parameters (from Simaan2009);
 Rs  = 1.0000; % (0.83-normal,weak; 1.4-severly weak without pump; 0.83-severly weak with pump)(mmHg.sec/mL)
-Rm  = 0.1; % Rm-mitral valve open;(mmHg.sec/mL)
+Rm  = 0.1000; % Rm-mitral valve open;(mmHg.sec/mL)
 Ra  = 0.0010; % Ra-aortic valve open;(mmHg.sec/mL)
 Rc  = 0.0398; % Rc-characteristic resistance;(mmHg.sec/mL)
 Cae = 4.4000; % Cr-pulmonary compliance;(mL/mmHg)
 Cs  = 1.3300; % Systemic Complinace (ml/mmHg)
 Cao = 0.0800; % Aortic Complinace (ml/mmHg)
 Ls  = 0.0005; % Ls-inertance of blood in aorta;(mmHg.sec^2/mL)
+
+Vo = 10;
 
 % LVAD parameters
 Ri = 0.0677;
@@ -49,8 +54,6 @@ Pas(1)  = 90;
 Pae(1)  = 5;
 Qvad(1) = 0; % x6 - LVAD flow
 
-Pve(1) = E(1)*(Vve(1) - Vo);
-
 %x = [  x1     x2      x3      x4      x5        x6  ]';
 x =  [Pao(1)  Qa(1)  Vve(1)  Pas(1)  Pae(1)   Qvad(1)]';
 
@@ -60,19 +63,45 @@ Dm = 0; Da = 0;
 CO = 0;
 EDV = 0;
 ESV = 0;
+
+
+SP  = zeros(1,length(T));
+PIP = zeros(1, length(T));
+d_PIP  = zeros(1, length(T));
+COvec  = zeros(1, length(T));
+EDVvec = zeros(1, length(T));
+ESVvec = zeros(1, length(T));
+estado = zeros(1, length(T));
+rs  = ones(1, length(T));
+rm  = zeros(1, length(T));
+cae = zeros(1, length(T));
+Pao = zeros(1, length(T));
+Qa  = zeros(1, length(T));
+Vve = zeros(1, length(T));
+Pas = zeros(1, length(T));
+Pae = zeros(1, length(T));
+Qvad = zeros(1, length(T));
+Pve  = zeros(1, length(T));
+
+Pve(1) = E(1)*(Vve(1) - Vo);
+
 % Simulation
 w_rpm = zeros(1, end_t/passo+1);
 w_rpm(1) = 6100;
 estado_atual = 3;
 d_PIP(1) = 0; % derivada do PIP
-SP      = zeros(1,length(T));
-rs = ones(1, length(T));
+enable_preload = 1;
 
-EDP(1) = Pve(1);
-Aux(1) = 40;
 estado(1) = 0;
 
+% SP-controller
+SPref = 79.1821;
+Nref = 7515;
+ksp = 50;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i = 1:n-1
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 if Pae(i) >= Pve(i)
     Dm = 1;
@@ -168,23 +197,7 @@ if i > 1
     end
 end
 
-if i > 1
-    if(estado_anterior ~= estado_atual && estado_anterior == 2)
-        % Encontrar a EDP
-        EDP(i) = PIP(i);
-        Aux(i) = 40;
-    else
-        EDP(i) = EDP(i-1);
-        Aux(i) = 30;
-    end
-end
-
 x = runkut42(x,xdot,E(i),w,passo);
-
-% SP-controller
-SPref = 83.66;
-Nref = 8660;
-ksp = 50;
 
 w_rpm(i+1) = ksp*(SP(i) - SPref) + Nref;
 
@@ -199,7 +212,14 @@ x6dot = xdot(6,1);
 
 Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
 end
-EDP(i+1) = EDP(i);
+
 PIP(i+1) = PIP(i);
-Aux(i+1) = Aux(i);
-end
+COvec_SP_Cont = COvec;
+SP_SP_Cont    = SP;
+
+%%
+save('simaan2009_LVAD_SP_Cont.mat','COvec_SP_Cont','SP_SP_Cont')
+
+%%
+figure(1)
+plot(T, COvec, 'Color', [0.5 0.5 0.5], 'LineWidth', 3)

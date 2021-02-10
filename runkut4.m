@@ -1,14 +1,20 @@
 
-function x = runkut4(passo,A,x,B)
+function x = runkut4(passo,xdot)
 
-xdot = A*x + B;
 kx1 = passo*xdot;
 x1 = x + 0.5*kx1;
-xdot = A*x1 + B;
+xdot(1,1) = (-Da/Ra*x(1)   -1*x(2)    a13*x(3)     0*x(4)      0*x(5)      1*x(6) -    (Da/Ra)*E(i)*Vo     )/Cao;
+xdot(2,1) = (     1*x(1)  -Rc*x(2)      0*x(3)    -1*x(4)      0*x(5)      0*x(6) +           0            )/Ls;
+xdot(3,1) = ( Da/Ra*x(1)    0*x(2)    a33*x(3)     0*x(4)  Dm/Rm*x(5)     -1*x(6) + (Dm/Rm + Da/Ra)*E(i)*Vo);
+xdot(4,1) = (     0*x(1)    1*x(2)      0*x(3) -1/Rs*x(4)   1/Rs*x(5)      0*x(6) +           0             )/Cs;
+xdot(5,1) = (     0*x(1)    0*x(2)    a53*x(3)  1/Rs*x(4)    a55*x(5)      0*x(6) +   (-(Dm/Rm)*E(i)*Vo)    )/Cae;
+xdot(6,1) = (    -1*x(1)    0*x(2)   E(i)*x(3)     0*x(4)      0*x(5)    -RR*x(6) +  -(E(i)*Vo) - B2*w^2    )/LL;
 kx2 = passo*xdot;
+
 x1 = x + 0.5*kx2;
 xdot = A*x1 + B;
 kx3 = passo*xdot;
+
 x1 = x + kx3;
 xdot = A*x1 + B;
 kx4 = passo*xdot;
