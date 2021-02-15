@@ -1,5 +1,5 @@
 clear
-% close all
+close all
 clc
 
 global Da Dm Rs Rm Ra Rc Cae Cs Cao Ls RR LL Vo B2 alpha
@@ -66,7 +66,7 @@ ESV = 0;
 
 % constant speed
 
-w_rpm = 12515;
+w_rpm = 7515;
 w = (w_rpm*2*pi/60);
 
 estado_atual = 3;
@@ -208,70 +208,68 @@ SP(i+1) = SP(i);
 COvec_w_cte = COvec;
 SP_w_cte    = SP;
 
-plot(Qvad)
+%%
+save('simaan2009_LVAD_w_cte.mat','COvec_w_cte','SP_w_cte')
+
+%% PIP plot
+figure(1)
+plot(T, SP, '-k','LineWidth', 2);
+hold on
+plot(T,PIP, 'color',[0.5 0.5 0.5]);
+ylim([0 120])
+xlim([0 120])
+xticks([0 20 30 40 60 70 80 90 120])
+yticks([0 50 100 120])
+legend('PIP', 'SP')
+xlabel('Time (s)','interpreter','latex')
+ylabel('Pressure (mmHg)','interpreter','latex')
+set(gca,'FontSize',14)
+set(gca,'fontname','times')
+grid on
 
 %%
-% save('simaan2009_LVAD_w_cte.mat','COvec_w_cte','SP_w_cte')
-% 
-% %% PIP plot
-% figure(1)
-% plot(T, SP, '-k','LineWidth', 2);
-% hold on
-% plot(T,PIP, 'color',[0.5 0.5 0.5]);
-% ylim([0 120])
-% xlim([0 120])
-% xticks([0 20 30 40 60 70 80 90 120])
-% yticks([0 50 100 120])
-% legend('PIP', 'SP')
-% xlabel('Time (s)','interpreter','latex')
-% ylabel('Pressure (mmHg)','interpreter','latex')
-% set(gca,'FontSize',14)
-% set(gca,'fontname','times')
-% grid on
-% 
-% %%
-% figure(2)
-% subplot(2, 1, 1);
-% plot(T, rm,'-k','LineWidth', 2)
-% grid on
-% ylim([0.07 0.11])
-% yticks([0.08 0.09 0.1])
-% xticks([0 16 20 30 40 120])
-% ylabel('$R_m$','interpreter','latex')
-% set(gca,'FontSize',16)
-% set(gca,'fontname','times')
-% 
-% subplot(2, 1, 2);
-% plot(T, rs, '-k','LineWidth', 2)
-% grid on
-% ylim([0.4 1.1])
-% xticks([0 60 70 80 90 120])
-% yticks([0.5 0.75 1])
-% xlabel('Time (s)')
-% ylabel('$R_s$','interpreter','latex')
-% set(gca,'FontSize',16)
-% set(gca,'fontname','times')
-% %%
-% % Cardiac Output Plot
-% figure(3)
-% subplot(2, 1, 1)
-% plot(T, COvec, 'Color', [0.5 0.5 0.5],'LineWidth', 2)
-% ylabel('CO (L/min)')
-% xticks([0 20 40 60 100])
-% grid on
-% axis([0 120 3 6])
-% title('Preload variation')
-% legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
-% legend('boxoff')
-% 
-% subplot(2,1,2)
-% plot(T, SP,'Color',[0.5 0.5 0.5],'LineWidth', 2)
-% ylim([0 150])
-% yticks([0 50 100 150])
-% xticks([0 20 40 60])
-% grid on
-% xlim([0 100])
-% xlabel('Time(s)')
-% ylabel('SP (mm Hg)')
-% legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
-% legend('boxoff')
+figure(2)
+subplot(2, 1, 1);
+plot(T, rm,'-k','LineWidth', 2)
+grid on
+ylim([0.07 0.11])
+yticks([0.08 0.09 0.1])
+xticks([0 16 20 30 40 120])
+ylabel('$R_m$','interpreter','latex')
+set(gca,'FontSize',16)
+set(gca,'fontname','times')
+
+subplot(2, 1, 2);
+plot(T, rs, '-k','LineWidth', 2)
+grid on
+ylim([0.4 1.1])
+xticks([0 60 70 80 90 120])
+yticks([0.5 0.75 1])
+xlabel('Time (s)')
+ylabel('$R_s$','interpreter','latex')
+set(gca,'FontSize',16)
+set(gca,'fontname','times')
+%%
+% Cardiac Output Plot
+figure(3)
+subplot(2, 1, 1)
+plot(T, COvec, 'Color', [0.5 0.5 0.5],'LineWidth', 2)
+ylabel('CO (L/min)')
+xticks([0 20 40 60 100])
+grid on
+axis([0 120 3 6])
+title('Preload variation')
+legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
+legend('boxoff')
+
+subplot(2,1,2)
+plot(T, SP,'Color',[0.5 0.5 0.5],'LineWidth', 2)
+ylim([0 150])
+yticks([0 50 100 150])
+xticks([0 20 40 60])
+grid on
+xlim([0 100])
+xlabel('Time(s)')
+ylabel('SP (mm Hg)')
+legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
+legend('boxoff')
