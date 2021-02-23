@@ -1,13 +1,13 @@
 clear
-close all
+% close all
 clc
 
-global Da Dm Rs Rm Ra Rc Cae Cs Cao Ls RR LL Vo B2 alpha
+global Da Dm Rs Rm Ra Rc Cae Cs Cao Ls RR LL Vo B2 alpha B a0 a1 J
 
 %% Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 16;
+end_t   = 25;
 
 % Uses the already created Time scale
 T = start_t:passo:end_t;
@@ -36,15 +36,31 @@ Ro = 0.0677;
 Li = 0.0127;
 Lo = 0.0127;
 
-% Pump
-Bo = 0.17070;
-B1 = 0.02177;
-B2 = -9.9025e-5;
+% Pump parameters
+Bo = 0.296;
+B1 = 0.027;
+B2 = -9.33e-5;
 
 LL = Li + Lo + B1;
 alpha = -3.5;
 
 Vo = 10;
+
+Pao = zeros(1, length(T));
+Qa  = zeros(1, length(T));
+Vve = zeros(1, length(T));
+Pas = zeros(1, length(T));
+Pae = zeros(1, length(T));
+Qvad = zeros(1, length(T));
+
+%  constant speed
+w_rpm = 12000;
+wrads = (w_rpm*2*pi/60);
+w = zeros(1, length(T));
+
+Pve  = zeros(1, length(T));
+Eint = zeros(1, length(T));
+Ew = zeros(1, length(T));
 
 % Initial Conditions
 Pao(1)  = 90;
@@ -54,8 +70,8 @@ Pas(1)  = 90;
 Pae(1)  = 5;
 Qvad(1) = 0; % x6 - LVAD flow
 
-%x = [  x1     x2      x3      x4      x5        x6  ]';
-x =  [Pao(1)  Qa(1)  Vve(1)  Pas(1)  Pae(1)   Qvad(1)]';
+%x = [  x1     x2      x3      x4      x5        x6      x7  ]';
+x =  [Pao(1)  Qa(1)  Vve(1)  Pas(1)  Pae(1)   Qvad(1)   w(1) ]';
 
 % Initial states of diodes
 Dm = 0; Da = 0;
@@ -64,26 +80,12 @@ CO = 0;
 EDV = 0;
 ESV = 0;
 
-% constant speed
-
-w_rpm = 7515;
-w = (w_rpm*2*pi/60);
-
 estado_atual = 3;
 SP      = zeros(1,length(T));
 
 rs  = ones(1, length(T));
 rm  = zeros(1, length(T));
 cae = zeros(1, length(T));
-
-Pao = zeros(1, length(T));
-Qa  = zeros(1, length(T));
-Vve = zeros(1, length(T));
-Pas = zeros(1, length(T));
-Pae = zeros(1, length(T));
-Qvad = zeros(1, length(T));
-
-Pve  = zeros(1, length(T));
 
 PIP = zeros(1, length(T));
 d_PIP  = zeros(1, length(T));
@@ -93,10 +95,18 @@ ESVvec = zeros(1, length(T));
 estado = zeros(1, length(T));
 
 estado(1) = 0;
-enable_preload = 1;
+enable_preload = 0;
 rm(1) = 0.1;
 SP(1) = 1;
 PIP(1) = 0;
+
+J = 0.916e-6;
+B = 0.66e-6;
+a0 = 0.738e-12;
+a1 = 0.198e-10;
+
+Kp = 2*B*10;
+Ki = 2*B*B/J;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i = 1:n-1
@@ -178,7 +188,22 @@ else
 end
 RR = Ri + Ro + Rk + Bo;
 
-xdot = xdot_fun(x,E(i),w);
+if i >= 50000 && i < 100000
+    w_rpm = 8000;
+elseif i >= 100000
+    w_rpm = 14000;
+end
+
+Ew(i) = (w_rpm*2*pi/60) - x(7);
+if i ==1
+    Eint(i) = 0;
+else
+    Eint(i) = Eint(i-1) + Ew(i)*passo;
+end
+Te = Kp*Ew(i) + Ki*Eint(i);
+% Te = Kp*Ew(i);
+
+xdot = xdot_fun_Te(x,E(i),Te);
 
 PIP(i) = Pve(i) - Li*xdot(6,1) - Ri*x(6);
 if i > 1
@@ -190,7 +215,7 @@ if i > 1
     end
 end
 
-x = runkut42(x,xdot,E(i),w,passo);
+x = runkut42_Te(x,xdot,E(i),Te,passo);
 
 Pao(i+1) = x(1);
 Qa(i+1)  = x(2);
@@ -198,6 +223,7 @@ Vve(i+1) = x(3);
 Pas(i+1) = x(4);
 Pae(i+1) = x(5);
 Qvad(i+1)= x(6);
+w(i+1)   = x(7);
 
 Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
 end
@@ -208,68 +234,72 @@ SP(i+1) = SP(i);
 COvec_w_cte = COvec;
 SP_w_cte    = SP;
 
-%%
-save('simaan2009_LVAD_w_cte.mat','COvec_w_cte','SP_w_cte')
-
-%% PIP plot
-figure(1)
-plot(T, SP, '-k','LineWidth', 2);
+plot(T,Qvad)
 hold on
-plot(T,PIP, 'color',[0.5 0.5 0.5]);
-ylim([0 120])
-xlim([0 120])
-xticks([0 20 30 40 60 70 80 90 120])
-yticks([0 50 100 120])
-legend('PIP', 'SP')
-xlabel('Time (s)','interpreter','latex')
-ylabel('Pressure (mmHg)','interpreter','latex')
-set(gca,'FontSize',14)
-set(gca,'fontname','times')
-grid on
+plot(T,w)
 
 %%
-figure(2)
-subplot(2, 1, 1);
-plot(T, rm,'-k','LineWidth', 2)
-grid on
-ylim([0.07 0.11])
-yticks([0.08 0.09 0.1])
-xticks([0 16 20 30 40 120])
-ylabel('$R_m$','interpreter','latex')
-set(gca,'FontSize',16)
-set(gca,'fontname','times')
-
-subplot(2, 1, 2);
-plot(T, rs, '-k','LineWidth', 2)
-grid on
-ylim([0.4 1.1])
-xticks([0 60 70 80 90 120])
-yticks([0.5 0.75 1])
-xlabel('Time (s)')
-ylabel('$R_s$','interpreter','latex')
-set(gca,'FontSize',16)
-set(gca,'fontname','times')
-%%
-% Cardiac Output Plot
-figure(3)
-subplot(2, 1, 1)
-plot(T, COvec, 'Color', [0.5 0.5 0.5],'LineWidth', 2)
-ylabel('CO (L/min)')
-xticks([0 20 40 60 100])
-grid on
-axis([0 120 3 6])
-title('Preload variation')
-legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
-legend('boxoff')
-
-subplot(2,1,2)
-plot(T, SP,'Color',[0.5 0.5 0.5],'LineWidth', 2)
-ylim([0 150])
-yticks([0 50 100 150])
-xticks([0 20 40 60])
-grid on
-xlim([0 100])
-xlabel('Time(s)')
-ylabel('SP (mm Hg)')
-legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
-legend('boxoff')
+% save('simaan2009_LVAD_w_cte.mat','COvec_w_cte','SP_w_cte')
+% 
+%% PIP plot
+% figure(1)
+% plot(T, SP, '-k','LineWidth', 2);
+% hold on
+% plot(T,PIP, 'color',[0.5 0.5 0.5]);
+% ylim([0 120])
+% xlim([0 120])
+% xticks([0 20 30 40 60 70 80 90 120])
+% yticks([0 50 100 120])
+% legend('PIP', 'SP')
+% xlabel('Time (s)','interpreter','latex')
+% ylabel('Pressure (mmHg)','interpreter','latex')
+% set(gca,'FontSize',14)
+% set(gca,'fontname','times')
+% grid on
+% 
+% %%
+% figure(2)
+% subplot(2, 1, 1);
+% plot(T, rm,'-k','LineWidth', 2)
+% grid on
+% ylim([0.07 0.11])
+% yticks([0.08 0.09 0.1])
+% xticks([0 16 20 30 40 120])
+% ylabel('$R_m$','interpreter','latex')
+% set(gca,'FontSize',16)
+% set(gca,'fontname','times')
+% 
+% subplot(2, 1, 2);
+% plot(T, rs, '-k','LineWidth', 2)
+% grid on
+% ylim([0.4 1.1])
+% xticks([0 60 70 80 90 120])
+% yticks([0.5 0.75 1])
+% xlabel('Time (s)')
+% ylabel('$R_s$','interpreter','latex')
+% set(gca,'FontSize',16)
+% set(gca,'fontname','times')
+% %%
+% % Cardiac Output Plot
+% figure(3)
+% subplot(2, 1, 1)
+% plot(T, COvec, 'Color', [0.5 0.5 0.5],'LineWidth', 2)
+% ylabel('CO (L/min)')
+% xticks([0 20 40 60 100])
+% grid on
+% axis([0 120 3 6])
+% title('Preload variation')
+% legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
+% legend('boxoff')
+% 
+% subplot(2,1,2)
+% plot(T, SP,'Color',[0.5 0.5 0.5],'LineWidth', 2)
+% ylim([0 150])
+% yticks([0 50 100 150])
+% xticks([0 20 40 60])
+% grid on
+% xlim([0 100])
+% xlabel('Time(s)')
+% ylabel('SP (mm Hg)')
+% legend('k_sp = 40 rpm/mm Hg', 'Orientation','horizontal')
+% legend('boxoff')

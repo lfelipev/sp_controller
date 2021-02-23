@@ -7,7 +7,7 @@ global Da Dm Rs Rm Ra Rc Cae Cs Cao Ls RR LL Vo B2 alpha
 %% Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 16;
+end_t   = 10;
 
 % Uses the already created Time scale
 T = start_t:passo:end_t;
@@ -66,7 +66,7 @@ ESV = 0;
 
 % constant speed
 
-w_rpm = 12515;
+w_rpm = 12000;
 w = (w_rpm*2*pi/60);
 
 estado_atual = 3;
