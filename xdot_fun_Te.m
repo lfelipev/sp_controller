@@ -9,6 +9,9 @@ a33 = -((Dm/Rm)+(Da/Ra))*E;
 a53 = (Dm/Rm)*E;
 a55 = -(1/Rs + Dm/Rm);
 
+%x = [  x1     x2      x3      x4      x5        x6      x7 ]';
+%x =  [Pao(1)  Qa(1)  Vve(1)  Pas(1)  Pae(1)   Qvad(1)   w(1)]';
+
 xdot(1,1) = (-Da/Ra*x(1)   -1*x(2)   +a13*x(3)    +0*x(4)      +0*x(5)    +1*x(6) -    (Da/Ra)*E*Vo     )/Cao;
 xdot(2,1) = (     1*x(1)  -Rc*x(2)     +0*x(3)    -1*x(4)      +0*x(5)    +0*x(6) +           0            )/Ls;
 xdot(3,1) = ( Da/Ra*x(1)   +0*x(2)   +a33*x(3)    +0*x(4)  +Dm/Rm*x(5)    -1*x(6) + (Dm/Rm + Da/Ra)*E*Vo);
