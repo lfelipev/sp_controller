@@ -84,12 +84,16 @@ a0 = 0.738e-12;
 a1 = 0.198e-10;
 
 % Ganhos sintonizados pelo MATLAB
-% Kp = 1.63918032306973e-06;
-% Ki = 1.85695310261092e-06;
+Kp = 1.63918032306973e-06;
+Ki = 1.85695310261092e-06;
 
 % Ganhos para cancelamento de Pólos 
-Kp = 8*B;
-Ki = Kp*B/J;
+% Kp = 8*B;
+% Ki = Kp*B/J;
+
+% Contador percentual da simula��o
+ip = 0;
+lg = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i = 1:n-1
@@ -116,7 +120,7 @@ if i >= 150000
 end
 
 % Calculo do erro e da integral do erro
-Ew(i) = (w_rpm*2*pi/60) - x(7);
+Ew(i) = (w_rpm*2*pi/60) - w(i);
 if i ==1
     Eint(i) = 0;
 else
@@ -124,8 +128,8 @@ else
 end
 
 % Cálculo do torque elétrico
-Te = Kp*Ew(i);
-%Te = Kp*Ew(i) + Ki*Eint(i);
+% Te = Kp*Ew(i);
+Te = Kp*Ew(i) + Ki*Eint(i) + (a0*w(i)^3 + a1*Qvad(i)*w(i)^2);
 Tevec(i) = Te;
 
 % Função das variáveis de estado
@@ -143,6 +147,14 @@ Qvad(i+1)= x(6);
 w(i+1)   = x(7);
 
 Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
+
+
+if (i > ip)
+    fprintf('Executing ... \t%d %%\r',lg);
+    lg = lg + 10;
+    ip = ip + (n-1)/10;
+end
+
 end
 %%
 figure(1)
