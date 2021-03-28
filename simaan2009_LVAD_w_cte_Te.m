@@ -7,15 +7,15 @@ global Da Dm Rs Rm Ra Rc Cae Cs Cao Ls RR LL Vo B2 alpha B a0 a1 J
 %% Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 30;
+end_t   = 120;
 
 % Uses the already created Time scale
 T = start_t:passo:end_t;
 n = length(T);
 
 %% Cardiovascular system
-HR = 90;
-Emax = 1.50;
+HR = 100;
+Emax = 1.2;
 Emin = 0.06;
 En = Elastance(T,passo,HR,end_t);
 E = (Emax - Emin)*En + Emin;
@@ -52,15 +52,20 @@ Vve = zeros(1, length(T));
 Pas = zeros(1, length(T));
 Pae = zeros(1, length(T));
 Qvad = zeros(1, length(T));
+rs  = ones(1, length(T));
 
 %  constant speed
-w_rpm = 10000;
+%con tava menor eu aumentei 50
+w_rpm = 11570;
 wrads = (w_rpm*2*pi/60);
 w = wrads*ones(1, length(T));
 
 Pve  = zeros(1, length(T));
 Eint = zeros(1, length(T));
 Ew = zeros(1, length(T));
+PIP = zeros(1, length(T));
+d_PIP  = zeros(1, length(T));
+SP  = zeros(1,length(T));
 
 % Initial Conditions
 Pao(1)  = 80;
@@ -87,7 +92,7 @@ a1 = 0.198e-10;
 Kp = 1.63918032306973e-06;
 Ki = 1.85695310261092e-06;
 
-% Ganhos para cancelamento de Pólos 
+% Ganhos para cancelamento de Pólos
 % Kp = 8*B;
 % Ki = Kp*B/J;
 
@@ -95,78 +100,158 @@ Ki = 1.85695310261092e-06;
 ip = 0;
 lg = 0;
 
+% SPref = 55.85;
+% Nref = 10 krpm
+
+Qvad_int = 0;
+count = 1;
+Cycle = zeros(1, length(T));
+Cycle(1) = 10;
+COvec  = zeros(1, length(T));
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i = 1:n-1
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Lógica dos diodos
-if Pae(i) >= Pve(i)
-    Dm = 1;
-else
-    Dm = 0;
-end
-
-if Pve(i) >= Pao(i)
-    Da = 1;
-else
-    Da = 0;
-end
-
-% Resistor do LVAD
-RR = Ri + Ro + Bo;
-
-% Variação da referência em 15s
-if i >= 150000
-    w_rpm = 13000;
-end
-
-% Calculo do erro e da integral do erro
-Ew(i) = (w_rpm*2*pi/60) - w(i);
-if i ==1
-    Eint(i) = 0;
-else
-    Eint(i) = Eint(i-1) + Ew(i)*passo;
-end
-
-% Cálculo do torque elétrico
-% Te = Kp*Ew(i);
-Te = Kp*Ew(i) + Ki*Eint(i) + (a0*w(i)^3 + a1*Qvad(i)*w(i)^2);
-Tevec(i) = Te;
-
-% Função das variáveis de estado
-xdot = xdot_fun_Te(x,E(i),Te);
-
-% Runge-Kutta
-x = runkut42_Te(x,xdot,E(i),Te,passo);
-
-Pao(i+1) = x(1);
-Qa(i+1)  = x(2);
-Vve(i+1) = x(3);
-Pas(i+1) = x(4);
-Pae(i+1) = x(5);
-Qvad(i+1)= x(6);
-w(i+1)   = x(7);
-
-Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
-
-
-if (i > ip)
-    fprintf('Executing ... \t%d %%\r',lg);
-    lg = lg + 10;
-    ip = ip + (n-1)/10;
-end
-
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    if i > count*60/HR/passo
+        count = count + 1;
+        Cycle(i) = 10;
+    end
+    
+    % Lógica dos diodos
+    if Pae(i) >= Pve(i)
+        Dm = 1;
+    else
+        Dm = 0;
+    end
+    
+    if Pve(i) >= Pao(i)
+        Da = 1;
+    else
+        Da = 0;
+    end
+    
+    % Varia?�o da Pr�-carga
+    if i < 160000 % 1a constante
+        Rm = 0.1;
+        cae(i+1) = Cae;
+        % 8000 -> 12000 // Rm = Variavel e Cae = variavel
+    elseif i >= 160000 && i < 200000 % rampa de subida
+        Rm = -5e-7*i+0.18;
+        rm(i+1) = Rm;
+    elseif i>= 200000 && i < 300000
+        Rm = 0.08;
+        rm(i+1) = Rm;
+    elseif i >= 300000 && i < 400000
+        Rm = 1e-7*i+0.05;
+        rm(i+1) = Rm;
+    elseif i>= 400000
+        Rm = 0.09;
+        rm(i+1) = Rm;
+    end
+    
+    if i >= 600000 && i < 700000
+        rs(i) = -5e-6 * i + 4;
+    elseif i>= 700000 && i < 800000
+        rs(i) = 0.5;
+    elseif i >= 800000 && i<900000
+        rs(i) = 2.5e-6 * i - 1.5;
+    elseif i >= 900000
+        rs(i) = 0.75;
+    end
+    Rs = rs(i);
+    
+    % Resistor do LVAD
+    RR = Ri + Ro + Bo;
+    
+    % Variação da referência em 15s
+    % if i >= 150000
+    %     w_rpm = 13000;
+    % end
+    
+    % Calculo do erro e da integral do erro
+    Ew(i) = (w_rpm*2*pi/60) - w(i);
+    if i ==1
+        Eint(i) = 0;
+    else
+        Eint(i) = Eint(i-1) + Ew(i)*passo;
+    end
+    
+    % Cálculo do torque elétrico
+    % Te = Kp*Ew(i);
+    Te = Kp*Ew(i) + Ki*Eint(i) + (a0*w(i)^3 + a1*Qvad(i)*w(i)^2);
+    Tevec(i) = Te;
+    
+    % Função das variáveis de estado
+    xdot = xdot_fun_Te(x,E(i),Te);
+    
+    PIP(i) = Pve(i) - Li*xdot(6,1) - Ri*x(6);
+    if i > 1
+        d_PIP(i) = (PIP(i) - PIP(i-1))/passo;
+        if d_PIP(i-1) >= 0.01 && d_PIP(i) < -0.01
+            SP(i) = PIP(i);
+        else
+            SP(i) = SP(i-1);
+        end
+    end
+    
+    % Runge-Kutta
+    x = runkut42_Te(x,xdot,E(i),Te,passo);
+    
+    Pao(i+1) = x(1);
+    Qa(i+1)  = x(2);
+    Vve(i+1) = x(3);
+    Pas(i+1) = x(4);
+    Pae(i+1) = x(5);
+    Qvad(i+1)= x(6);
+    w(i+1)   = x(7);
+    
+    Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
+    
+    
+    if (i > ip)
+        fprintf('Executing ... \t%d %%\r',lg);
+        lg = lg + 10;
+        ip = ip + (n-1)/10;
+    end
+    
+    Qvad_int = Qvad_int + Qvad(i)*passo;
+    
+    if Cycle(i) == 10
+        CO = Qvad_int;
+        Qvad_int = Qvad_int*0;
+    end
+    COvec(i) = CO*0.06;
+    
 end
 %%
+% plot(Pve)
+% hold on
+% plot(Pao)
+
+
+COvec_con = COvec;
+SP_con = SP;
+save('simaan2009_con.mat','COvec_con','SP_con')
+load('simaan2009_phy.mat')
+
+%%
 figure(1)
-subplot(3,1,1)
-plot(T,Qvad)
-grid on
-title('Fluxo através do VAD (ml/s)')
-subplot(3,1,2)
-plot(T,w)
-grid on
-title('Velocidade de rotação do VAD (rad/s)')
-subplot(3,1,3)
-plot(T,Tevec)
-title('Torque elétrico (N/m)')
-grid on
+plot(T, COvec)
+hold on
+plot(T, COvec_phy)
+legend('CON', 'Phy')
+
+% figure(1)
+% subplot(3,1,1)
+% plot(T,Qvad)
+% grid on
+% title('Fluxo através do VAD (ml/s)')
+% subplot(3,1,2)
+% plot(T,w)
+% grid on
+% title('Velocidade de rotação do VAD (rad/s)')
+% subplot(3,1,3)
+% plot(T,Tevec)
+% title('Torque elétrico (N/m)')
+% grid on

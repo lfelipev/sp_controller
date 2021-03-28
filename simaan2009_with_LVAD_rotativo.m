@@ -8,7 +8,7 @@ global Da Dm Rs Rm Ra Rc Cae Cs Cao Ls RR LL Vo B2 alpha
 % Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 120;
+end_t   = 40;
 
 %Uses the already created Time scale
 T = start_t:passo:end_t;
@@ -280,12 +280,12 @@ pause
 
 %%
 % COphy + Petrou + Constant
-tempo = 120;
-[PIP_phis, SP_phis, COvec_phis, EDP_phis, Pas_phis, rs_phis] = physiological_simaan(1, tempo);
-
-[rs, Qvad, Vve, EDVvec, ESVvec, Pve_controlador, x6dot, PIP_controlador,...
-    SP_controlador, COvec_controlador, w_rpm_controlador, EDP_controlador,...
-    Pas_controlador] = sp_controller_simaan(1, tempo);
+% tempo = 120;
+% [PIP_phis, SP_phis, COvec_phis, EDP_phis, Pas_phis, rs_phis] = physiological_simaan(1, tempo);
+% 
+% [rs, Qvad, Vve, EDVvec, ESVvec, Pve_controlador, x6dot, PIP_controlador,...
+%     SP_controlador, COvec_controlador, w_rpm_controlador, EDP_controlador,...
+%     Pas_controlador] = sp_controller_simaan(1, tempo);
 
 %[kspvec, Pve_vgcontrolador, PIP_vgcontrolador, SP_vgcontrolador,...
 %     COvec_vgcontrolador, w_rpm_vgcontrolador, EDP_vgcontrolador,...
@@ -310,19 +310,19 @@ Pas_constant = Pas;
 % set(gca,'fontname','times')
 % grid on
 %%
-figure(3)
-plot(T, COvec_phis, 'Color', 'yellow', 'LineWidth', 3)
-hold on
-plot(T, COvec_controlador, ':k', 'LineWidth', 2)
-hold on
-plot(T, COvec_constant, '--k', 'LineWidth', 2)
-legend('CO_{phy}', 'CO_{SP}', 'CO_{con}', 'Location', 'southeast')
-ylim([3 6])
-ylabel('CO (L/min)', 'interpreter','latex')
-xlabel('Time(s)', 'interpreter','latex')
-set(gca,'FontSize',14)
-set(gca,'fontname','times')
-grid on
+% figure(3)
+% plot(T, COvec_phis, 'Color', 'yellow', 'LineWidth', 3)
+% hold on
+% plot(T, COvec_controlador, ':k', 'LineWidth', 2)
+% hold on
+% plot(T, COvec_constant, '--k', 'LineWidth', 2)
+% legend('CO_{phy}', 'CO_{SP}', 'CO_{con}', 'Location', 'southeast')
+% ylim([3 6])
+% ylabel('CO (L/min)', 'interpreter','latex')
+% xlabel('Time(s)', 'interpreter','latex')
+% set(gca,'FontSize',14)
+% set(gca,'fontname','times')
+% grid on
 
 %% Plot do petrou
 % figure(1)

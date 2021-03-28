@@ -6,14 +6,14 @@ global Rs Ra Rm Rc Cao Cs Cae Ls Dm Da Vo RR LL B2 B a0 a1 J
 %% Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 2.5;
+end_t   = 120;
 
 %Uses the already created Time scale
 T = start_t:passo:end_t;
 n = length(T);
 
 %% Cardiovascular system
-HR = 90;
+HR = 100;
 Emax = 1.2;
 Emin = 0.06;
 En = Elastance(T,passo,HR,end_t);
@@ -72,9 +72,11 @@ estado = zeros(1,length(T));
 Qao = zeros(1,length(T));
 Dmvec = zeros(1,length(T));
 Davec = zeros(1,length(T));
+Cycle = zeros(1, length(T));
 
 %  constant speed
-w_rpm = 16000;
+w_rpm = 11570;
+w_rpmvec = w_rpm*ones(1, length(T));
 wrads = (w_rpm*2*pi/60);
 w = wrads*ones(1, length(T));
 
@@ -93,6 +95,7 @@ EDV = 0;
 ESV = 0;
 Pve(1) = E(1)*(Vve(1) - Vo);
 estado_atual = 3;
+Cycle(1) = 10;
 
 %x = [  x1     x2      x3      x4      x5        x6      x7 ]';
 x =  [Pao(1)  Qa(1)  Vve(1)  Pas(1)  Pae(1)   Qvad(1)   w(1)]';
@@ -106,16 +109,33 @@ a0 = 0.738e-12;
 a1 = 0.198e-10;
 
 % Ganhos sintonizados pelo MATLAB
-% Kp = 1.63918032306973e-06;
-% Ki = 1.85695310261092e-06;
+Kp = 1.63918032306973e-06;
+Ki = 1.85695310261092e-06;
 
 % Ganhos para cancelamento de Pólos
-Kp = 8*B;
-Ki = Kp*B/J;
+% Kp = 8*B;
+% Ki = Kp*B/J;
+
+% Contador percentual da simulação
+ip = 0;
+lg = 0;
+
+Nref = 11570;
+SPref = 83.54;
+ksp = 10;
+COvec_aux = 0;
+
+Qvad_int = 0;
+count = 1;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i = 1:n-1
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    if i > count*60/HR/passo
+        count = count + 1;
+        Cycle(i) = 10;
+    end
     
     if Pae(i) >= Pve(i)
         Dm = 1;
@@ -128,36 +148,6 @@ for i = 1:n-1
     else
         Da = 0;
     end
-    Dmvec(i) = Dm;
-    Davec(i) = Da;
-    
-    if Da == 0
-        COvec(i) = Qvad(i);
-    else
-        COvec(i) = Qvad(i);
-    end
-    COvec(i) = COvec(i) * 0.06;
-    
-    estado_anterior = estado_atual;
-    if (Dm == 1 && Da == 0) && (estado_atual == 4)
-        estado_atual = 1; % se o estado atual é Relaxamento(4), vai p/ Enchimento(1)
-        ESV = Vve(i);
-    end
-    if (Dm == 0 && Da ==0) && (estado_atual == 1)
-        estado_atual = 2; % se o estado atual é Enchimento(1), vai p/ Contração Isovolumétrica(2)
-    end
-    if (Dm == 0 && Da == 1) && (estado_atual == 2)
-        estado_atual = 3; % Se o estado atual é Contração Isovolumétrica(2), vai p/ Ejeção(3)
-        EDV = Vve(i);
-    end
-    if (Dm == 0 && Da == 0) && (estado_atual == 3)
-        estado_atual = 4; % Se o estado atual é Ejeção(3), vai p/ Relaxamento Isovolumétrico(4)
-    end
-    
-    %COvec(i+1) = ((EDV-ESV) * HR) / 1000;
-    EDVvec(i+1) = EDV;
-    ESVvec(i+1) = ESV;
-    estado(i+1) = estado_atual;
     
     % Varia?ão da Pré-carga
     if i < 160000 % 1a constante
@@ -198,15 +188,9 @@ for i = 1:n-1
     end
     
     RR = Ri + Ro + Rk + Bo;
-    %RR = Ri + Ro + Bo;
-    
-    % Variação da referência em 15s
-%     if i >= 150000
-%         w_rpm = 13000;
-%     end
     
     % Calculo do erro e da integral do erro
-    Ew(i) = (w_rpm*2*pi/60) - x(7);
+    Ew(i) = (w_rpmvec(i)*2*pi/60) - w(i);
     if i ==1
         Eint(i) = 0;
     else
@@ -214,7 +198,7 @@ for i = 1:n-1
     end
     
     % Cálculo do torque elétrico
-    Te = Kp*Ew(i);
+    Te = Kp*Ew(i) + Ki*Eint(i) + (a0*w(i)^3 + a1*Qvad(i)*w(i)^2);
     %Te = Kp*Ew(i) + Ki*Eint(i);
     Tevec(i) = Te;
     
@@ -231,6 +215,8 @@ for i = 1:n-1
         end
     end
     
+    w_rpmvec(i+1) = ksp*(SP(i)-SPref) + Nref;
+    
     % Runge-Kutta
     x = runkut42_Te(x,xdot,E(i),Te,passo);
     
@@ -244,8 +230,32 @@ for i = 1:n-1
     
     Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
     Qao(i+1) = (Pao(i+1) - Pve(i+1))/Ra;
+    
+    if (i > ip)
+        fprintf('Executing ... \t%d %%\r',lg);
+        lg = lg + 10;
+        ip = ip + (n-1)/10;
+    end
+    
+    Qvad_int = Qvad_int + Qvad(i)*passo;
+    
+    if Cycle(i) == 10
+        CO = Qvad_int;
+        Qvad_int = Qvad_int*0;
+    end
+    COvec(i) = CO*0.06;
 end
 PIP(i+1) = PIP(i);
 
+%%
+COvec_sp = COvec;
+SP_sp = SP;
+save('simaan2009_LVAD_SP_Cont.mat','COvec_sp','SP_sp')
+
+load('simaan2009_phy.mat')
+
+%%
 figure(1)
-plot(T, COvec, 'Color', [0.5 0.5 0.5], 'LineWidth', 3)
+plot(T, COvec)
+hold on
+plot(T, COvec_phy)

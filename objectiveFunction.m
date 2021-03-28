@@ -1,6 +1,7 @@
-clear
-close all
-clc
+function RMSE = objectiveFunction(delta)
+% clear
+% close all
+% clc
 
 global Rs Ra Rm Rc Cao Cs Cae Ls Dm Da Vo RR LL B2 B a0 a1 J
 tic
@@ -77,7 +78,7 @@ Cycle = zeros(1,length(T));
 kspvec = zeros(1,length(T));
 
 %  constant speed
-w_rpm = 11570;
+w_rpm = 11500;
 w_rpmvec = w_rpm*ones(1, length(T));
 wrads = (w_rpm*2*pi/60);
 w = wrads*ones(1, length(T));
@@ -122,9 +123,9 @@ Ki = 1.85695310261092e-06;
 ip = 0;
 lg = 0;
 
-Nref = 11570;
-SPref = 83.54;
-ksp = 5;
+Nref = 11500;
+SPref = 83.55;
+ksp = 10;
 COvec_aux = 0;
 
 Qvad_int = 0;
@@ -237,29 +238,17 @@ for i = 1:n-1
         end
     end
 %     
-    % Cenario 1
-    % Erro maior que zero e menor que 0.1
-    % Erro menor que zero e maior que -0.1
-    % Erro maior que zero e maior que 0.1
-    % Erro menor que zero e menor que -0.1
-    % Erro nulo
+
     if(counter_erro == counter_error_constant)
         counter_erro = 1;
         COerr = COvec_phy(i-1) - COvec(i-1);
-        COerrvec(i) = COerr;
         
-        if COerr > 0 && COerr < 0.1
-            ksp = ksp - 0.1;
-        elseif COerr < 0 && COerr > -0.1
-            ksp = ksp + 0.1;
-        elseif COerr > 0 && COerr > 0.1
-            ksp = ksp - 0.8;
-        elseif COerr < 0 && COerr < -0.1
-            ksp = ksp + 1;
-        elseif COerr == 0
-            ksp = ksp;
+        if COerr >= 0
+            ksp = ksp - delta;
+        elseif COerr < 0 && COerr > 0.2
+            ksp = ksp + delta;
         else
-            ksp = ksp +0.5;
+            ksp = ksp + 1;
         end
     end
     
@@ -305,16 +294,7 @@ for i = 1:n-1
 end
 PIP(i+1) = PIP(i);
 kspvec(i+1) = ksp;
-COerrvec(i+1) = COerr;
 toc
-
-figure(1)
-plot(T, COvec, 'Color', [0.5 0.5 0.5], 'LineWidth', 3)
-hold on
-plot(T, COvec_phy)
-hold on
-% plot(T(1:600000),COvec_phy(1:600000))
-%%
 
 COvec_vg = COvec;
 SP_vg = SP;
@@ -322,25 +302,6 @@ save('simaan2009_LVAD_VG_Cont.mat','COvec_vg','SP_vg')
 load('simaan2009_con.mat')
 load('simaan2009_LVAD_SP_Cont.mat')
 load('simaan2009_phy.mat')
-%%
-% clf
-% plot(T, COvec_phy, '-k', 'LineWidth', 0.5)
-% hold on
-% plot(T, COvec_con, '--k')
-% hold on
-% plot(T, COvec_sp, ':k')
-% hold on
-% plot(T, COvec_vg, '-.k')
-% xlim([10 110])
-% legend('Phy', 'Con', 'SP', 'VG')
-% ylim([2.5 5])
-%%
-plot(T, COvec_phy)
-hold on
-plot(T, COvec_vg)
-hold on
-plot(T, kspvec/3 - 2)
-ylim([2.5 5])
-xlim([10 110])
 
+RMSE = sqrt(mean((COvec_vg-COvec_phy).^2));
 

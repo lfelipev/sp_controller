@@ -64,7 +64,6 @@ CO = 0;
 EDV = 0;
 ESV = 0;
 
-
 SP  = zeros(1,length(T));
 PIP = zeros(1, length(T));
 d_PIP  = zeros(1, length(T));
@@ -95,9 +94,13 @@ enable_preload = 1;
 estado(1) = 0;
 
 % SP-controller
-SPref = 79.1821;
-Nref = 7515;
+SPref = 55.85;
+Nref = 10000;
 ksp = 50;
+
+% Ganhos sintonizados pelo MATLAB
+Kp = 1.63918032306973e-06;
+Ki = 1.85695310261092e-06;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i = 1:n-1
@@ -115,27 +118,12 @@ else
     Da = 0;
 end
 
-estado_anterior = estado_atual;
-if (Dm == 1 && Da == 0) && (estado_atual == 4)
-    estado_atual = 1; % se o estado atual é Relaxamento(4), vai p/ Enchimento(1)
-    ESV = Vve(i);
-end
-if (Dm == 0 && Da ==0) && (estado_atual == 1)
-    estado_atual = 2; % se o estado atual é Enchimento(1), vai p/ Contração Isovolumétrica(2)
-end
-if (Dm == 0 && Da == 1) && (estado_atual == 2)
-    estado_atual = 3; % Se o estado atual é Contração Isovolumétrica(2), vai p/ Ejeção(3)
-    EDV = Vve(i);
-end
-if (Dm == 0 && Da == 0) && (estado_atual == 3)
-    estado_atual = 4; % Se o estado atual é Ejeção(3), vai p/ Relaxamento Isovolumétrico(4)
-end
-
-COvec(i+1) = ((EDV-ESV) * HR) / 1000;
-EDVvec(i+1) = EDV;
-ESVvec(i+1) = ESV;
-%SV = EDV - ESV;
-estado(i+1) = estado_atual;
+    if Da == 0
+        COvec(i) = Qvad(i);
+    else
+        COvec(i) = Qvad(i) + Qa(i);
+    end
+    COvec(i) = COvec(i)*0.06;
 
 if enable_preload
     % Varia?ão da Pré-carga
@@ -185,6 +173,19 @@ end
 RR = Ri + Ro + Rk + Bo;
 %RR = Ri + Ro + Bo;
 
+% Calculo do erro e da integral do erro
+Ew(i) = (w_rpm*2*pi/60) - w(i);
+if i ==1
+    Eint(i) = 0;
+else
+    Eint(i) = Eint(i-1) + Ew(i)*passo;
+end
+
+% CÃ¡lculo do torque elÃ©trico
+% Te = Kp*Ew(i);
+Te = Kp*Ew(i) + Ki*Eint(i) + (a0*w(i)^3 + a1*Qvad(i)*w(i)^2);
+Tevec(i) = Te;
+
 xdot = xdot_fun(x,E(i),w);
 
 PIP(i) = Pve(i) - Li*xdot(6,1) - Ri*x(6);
@@ -219,7 +220,10 @@ SP_SP_Cont    = SP;
 
 %%
 save('simaan2009_LVAD_SP_Cont.mat','COvec_SP_Cont','SP_SP_Cont')
+load('simaan2009_phy.mat')
 
 %%
 figure(1)
 plot(T, COvec, 'Color', [0.5 0.5 0.5], 'LineWidth', 3)
+hold on
+plot(T, COvec_phy)

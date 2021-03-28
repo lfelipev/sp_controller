@@ -249,13 +249,13 @@ for i = 1:n-1
         COerrvec(i) = COerr;
         
         if COerr > 0 && COerr < 0.1
-            ksp = ksp - 0.1;
+            ksp = ksp - 0.05;
         elseif COerr < 0 && COerr > -0.1
-            ksp = ksp + 0.1;
+            ksp = ksp + 0.5;
         elseif COerr > 0 && COerr > 0.1
-            ksp = ksp - 0.8;
+            ksp = ksp - 0.1;
         elseif COerr < 0 && COerr < -0.1
-            ksp = ksp + 1;
+            ksp = ksp + 0.8;
         elseif COerr == 0
             ksp = ksp;
         else
