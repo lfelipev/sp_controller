@@ -75,7 +75,7 @@ Davec = zeros(1,length(T));
 Cycle = zeros(1, length(T));
 
 %  constant speed
-w_rpm = 11570;
+w_rpm = 12720;
 w_rpmvec = w_rpm*ones(1, length(T));
 wrads = (w_rpm*2*pi/60);
 w = wrads*ones(1, length(T));
@@ -120,8 +120,8 @@ Ki = 1.85695310261092e-06;
 ip = 0;
 lg = 0;
 
-Nref = 11570;
-SPref = 83.54;
+Nref = 12720;
+SPref = 95.19;
 ksp = 10;
 COvec_aux = 0;
 
@@ -150,23 +150,18 @@ for i = 1:n-1
     end
     
     % Varia?ão da Pré-carga
-    if i < 160000 % 1a constante
-        Rm = 0.1;
-        cae(i+1) = Cae;
-        % 8000 -> 12000 // Rm = Variavel e Cae = variavel
-    elseif i >= 160000 && i < 200000 % rampa de subida
-        Rm = -5e-7*i+0.18;
-        rm(i+1) = Rm;
-    elseif i>= 200000 && i < 300000
-        Rm = 0.08;
-        rm(i+1) = Rm;
-    elseif i >= 300000 && i < 400000
-        Rm = 1e-7*i+0.05;
-        rm(i+1) = Rm;
-    elseif i>= 400000
-        Rm = 0.09;
-        rm(i+1) = Rm;
-    end
+        if i < 160000 % 1a constante
+            Rm = 0.1;
+        elseif i >= 160000 && i < 200000 % rampa de subida
+            Rm = -5e-7*i+0.18;
+        elseif i>= 200000 && i < 300000
+            Rm = 0.08;
+        elseif i >= 300000 && i < 400000
+            Rm = -4e-7*i+0.2;
+        elseif i>= 400000
+            Rm = 0.04;
+        end
+    rm(i+1) = Rm;
     
     if i >= 600000 && i < 700000
         rs(i) = -5e-6 * i + 4;

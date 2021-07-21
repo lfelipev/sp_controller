@@ -7,11 +7,16 @@ tic
 %% Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 120;
+end_t   = 2;
 
 %Uses the already created Time scale
 T = start_t:passo:end_t;
 n = length(T);
+
+%% ILC definitions
+ts = passo;
+z = tf('z', ts);
+k = 1/z;
 
 %% Cardiovascular system
 HR = 100;
@@ -22,7 +27,7 @@ E = (Emax - Emin)*En + Emin;
 
 % Cardiovascular system model parameters (from Simaan2009);
 Rs  = 1.0000; % (0.83-normal,weak; 1.4-severly weak without pump; 0.83-severly weak with pump)(mmHg.sec/mL)
-Rm  = 0.1000; % Rm-mitral valve open;(mmHg.sec/mL)
+Rm  = 0.8000; % Rm-mitral valve open;(mmHg.sec/mL)
 Ra  = 0.0010; % Ra-aortic valve open;(mmHg.sec/mL)
 Rc  = 0.0398; % Rc-characteristic resistance;(mmHg.sec/mL)
 Cae = 4.4000; % Cr-pulmonary compliance;(mL/mmHg)
@@ -77,7 +82,7 @@ Cycle = zeros(1,length(T));
 kspvec = zeros(1,length(T));
 
 %  constant speed
-w_rpm = 11570;
+w_rpm = 12720;
 w_rpmvec = w_rpm*ones(1, length(T));
 wrads = (w_rpm*2*pi/60);
 w = wrads*ones(1, length(T));
@@ -122,8 +127,8 @@ Ki = 1.85695310261092e-06;
 ip = 0;
 lg = 0;
 
-Nref = 11570;
-SPref = 83.54;
+Nref = 12720;
+SPref = 95.19;
 ksp = 5;
 COvec_aux = 0;
 
@@ -166,23 +171,18 @@ for i = 1:n-1
 %     COvec(i) = COvec_aux * 0.06;
     
     % Varia?ão da Pré-carga
-    if i < 160000 % 1a constante
-        Rm = 0.1;
-        cae(i+1) = Cae;
-        % 8000 -> 12000 // Rm = Variavel e Cae = variavel
-    elseif i >= 160000 && i < 200000 % rampa de subida
-        Rm = -5e-7*i+0.18;
-        rm(i+1) = Rm;
-    elseif i>= 200000 && i < 300000
-        Rm = 0.08;
-        rm(i+1) = Rm;
-    elseif i >= 300000 && i < 400000
-        Rm = 1e-7*i+0.05;
-        rm(i+1) = Rm;
-    elseif i>= 400000
-        Rm = 0.09;
-        rm(i+1) = Rm;
-    end
+        if i < 160000 % 1a constante
+            Rm = 0.1;
+        elseif i >= 160000 && i < 200000 % rampa de subida
+            Rm = -5e-7*i+0.18;
+        elseif i>= 200000 && i < 300000
+            Rm = 0.08;
+        elseif i >= 300000 && i < 400000
+            Rm = -4e-7*i+0.2;
+        elseif i>= 400000
+            Rm = 0.04;
+        end
+    rm(i+1) = Rm;
     
     if i >= 600000 && i < 700000
         rs(i) = -5e-6 * i + 4;
@@ -248,24 +248,24 @@ for i = 1:n-1
         COerr = COvec_phy(i-1) - COvec(i-1);
         COerrvec(i) = COerr;
         
-        if COerr > 0 && COerr < 0.1
-            ksp = ksp - 0.1;
-        elseif COerr < 0 && COerr > -0.1
+        if COerr > 0 && COerr > 0.1
+            ksp = ksp - 0.5;
+        elseif COerr <= 0 && COerr >= -0.1
             ksp = ksp + 0.1;
-        elseif COerr > 0 && COerr > 0.1
-            ksp = ksp - 0.8;
+        elseif COerr >= 0 && COerr <= 0.1
+            ksp = ksp - 0.1;
         elseif COerr < 0 && COerr < -0.1
-            ksp = ksp + 1;
+            ksp = ksp + 0.5;
         elseif COerr == 0
             ksp = ksp;
         else
-            ksp = ksp +0.5;
+            ksp = ksp;
         end
     end
     
     % limite inferior de ksp
-    if ksp < 5
-        ksp = 5;
+    if ksp < 0
+        ksp = 0;
     end
     % limite superior de ksp
     if ksp > 150
@@ -306,41 +306,101 @@ end
 PIP(i+1) = PIP(i);
 kspvec(i+1) = ksp;
 COerrvec(i+1) = COerr;
+COvec_vg = COvec;
+save('simaan2009_LVAD_VG_Cont.mat','COvec_vg','SP_vg')
+
+SP_vg = SP;
 toc
 
-figure(1)
-plot(T, COvec, 'Color', [0.5 0.5 0.5], 'LineWidth', 3)
-hold on
-plot(T, COvec_phy)
-hold on
+% figure(1)
+% plot(T, COvec, 'Color', [0.5 0.5 0.5], 'LineWidth', 3)
+% hold on
+% plot(T, COvec_phy)
+% hold on
 % plot(T(1:600000),COvec_phy(1:600000))
 %%
 
-COvec_vg = COvec;
-SP_vg = SP;
-save('simaan2009_LVAD_VG_Cont.mat','COvec_vg','SP_vg')
+
 load('simaan2009_con.mat')
 load('simaan2009_LVAD_SP_Cont.mat')
 load('simaan2009_phy.mat')
+load('simaan2009_LVAD_VG_Cont.mat')
 %%
-% clf
-% plot(T, COvec_phy, '-k', 'LineWidth', 0.5)
+clf
+plot(T, COvec_phy, '-', 'LineWidth', 4, 'Color', '#AAAAAA')
+hold on
+plot(T, COvec_sp, '-.k', 'LineWidth', 1.0)
+%hold on
+%plot(T, COvec_vg, '-k', 'LineWidth', 1.5)
+xlim([10 25])
+legend('Phy', 'SP')
+xlabel('time(s)', 'interpreter','latex')
+ylabel('CO (L/min)', 'interpreter','latex')
+set(gca,'FontSize',14)
+set(gca,'fontname','times')
+ylim([3.5 4.5])
+grid
+
+%%
+
+%%
+% plot(T, COvec_phy)
 % hold on
-% plot(T, COvec_con, '--k')
+% plot(T, COvec_vg)
 % hold on
-% plot(T, COvec_sp, ':k')
-% hold on
-% plot(T, COvec_vg, '-.k')
+% plot(T, kspvec/3 - 2)
+% ylim([2.5 6])
 % xlim([10 110])
-% legend('Phy', 'Con', 'SP', 'VG')
-% ylim([2.5 5])
+
+disp('MSE - Constant Controller');
+mse(COvec_phy(10000:end),COvec_con(10000:end),2)
+
+disp('MSE - SP Controller');
+mse(COvec_phy(10000:end),COvec_sp(10000:end),2)
+
+disp('MSE - VG Controller');
+mse(COvec_phy(10000:end),COvec_vg(10000:end),2)
+
 %%
-plot(T, COvec_phy)
-hold on
-plot(T, COvec_vg)
-hold on
-plot(T, kspvec/3 - 2)
-ylim([2.5 5])
-xlim([10 110])
+% rm(1) = 0.1;
+% rs(i+1) = 0.75;
+% figure(1)
+% subplot(2, 1, 1);
+% plot(T, rm,'-k','LineWidth', 2)
+% grid on
+% ylim([0.03 0.11])
+% yticks([0.04 0.08 0.1])
+% xticks([0 16 20 30 40 120])
+% ylabel('$R_m$','interpreter','latex')
+% set(gca,'FontSize',16)
+% set(gca,'fontname','times')
+% 
+% subplot(2, 1, 2);
+% plot(T, rs, '-k','LineWidth', 2)
+% grid on
+% ylim([0.4 1.1])
+% xticks([0 60 70 80 90 120])
+% yticks([0.5 0.75 1])
+% xlabel('Time (s)')
+% ylabel('$R_s$','interpreter','latex')
+% set(gca,'FontSize',16)
+% set(gca,'fontname','times')
+
+%%
+% figure(1)
+% plot(T, SP, '-k','LineWidth', 2);
+% hold on
+% plot(T,PIP, 'Color', '#777777');
+% ylim([0 120])
+% xlim([0 120])
+% xticks([0 20 30 40 60 70 80 90 120])
+% yticks([0 50 100 120])
+% legend('PIP', 'SP')
+% xlabel('Time (s)','interpreter','latex')
+% ylabel('Pressure (mmHg)','interpreter','latex')
+% set(gca,'FontSize',14)
+% set(gca,'fontname','times')
+% grid on
+
 
 

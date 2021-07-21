@@ -15,8 +15,8 @@ n = length(T);
 
 %% Cardiovascular system
 HR = 100;
-Emax = 1.2;
-Emin = 0.06;
+Emax = 2;
+Emin = 0.05;
 En = Elastance(T,passo,HR,end_t);
 E = (Emax - Emin)*En + Emin;
 
@@ -113,6 +113,7 @@ for i = 1:n-1
     end
     if (Dm == 0 && Da == 0) && (estado_atual == 3)
         estado_atual = 4; % Se o estado atual é Ejeção(3), vai p/ Relaxamento Isovolumétrico(4)
+        esv(i) = Vve(i);
     end
     
     COvec_phy(i+1) = ((SV) * HR) / 1000;
@@ -124,25 +125,18 @@ for i = 1:n-1
         % Varia?ão da Pré-carga
         if i < 160000 % 1a constante
             Rm = 0.1;
-            cae(i+1) = Cae;
-            rm(i+1) = Rm;
-            % 8000 -> 12000 // Rm = Variavel e Cae = variavel
         elseif i >= 160000 && i < 200000 % rampa de subida
             Rm = -5e-7*i+0.18;
-            %Cae = 1.8e-3*i -136;
-            cae(i+1) = Cae;
-            rm(i+1) = Rm;
         elseif i>= 200000 && i < 300000
             Rm = 0.08;
-            rm(i+1) = Rm;
         elseif i >= 300000 && i < 400000
-            Rm = 1e-7*i+0.05;
-            rm(i+1) = Rm;
+            Rm = -4e-7*i+0.2;
         elseif i>= 400000
-            Rm = 0.09;
-            rm(i+1) = Rm;
+            Rm = 0.04;
         end
     end
+    
+    rm(i+1) = Rm;
     
     if i >= 600000 && i < 700000
         rs(i) = -5e-6 * i + 4;
@@ -189,7 +183,7 @@ for i = 1:n-1
 end
 
 %%
-save('simaan2009_phy.mat','COvec_phy','SP')
+save('simaan2009_phy.mat','COvec_phy','SP', 'PIP')
 
 % %%
 figure(1)

@@ -8,7 +8,7 @@ global Da Dm Rs Rm Ra Rc Cae Cs Cao Ls RR LL Vo B2 alpha
 % Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 40;
+end_t   = 120;
 
 %Uses the already created Time scale
 T = start_t:passo:end_t;
@@ -39,7 +39,7 @@ Lo = 0.0127;
 
 % Pump
 Bo = 0.17070;
-B1 = 0.02177;6100
+B1 = 0.02177;
 B2 = -9.9025e-5;
 
 LL = Li + Lo + B1;
@@ -83,6 +83,10 @@ rm(1) = 0.1;
 SP(1) = 1;
 PIP(1) = 0;
 
+% Contador percentual da simulação
+ip = 0;
+lg = 0;
+
 for i = 1:n-1
 
 if Pae(i) >= Pve(i)
@@ -119,40 +123,32 @@ ESVvec(i+1) = ESV;
 %SV = EDV - ESV;
 estado(i+1) = estado_atual;
 
-if enable_preload
-    % Varia?ão da Pré-carga
-    if i < 160000 % 1a constante
-        Rm = 0.1;
-        cae(i+1) = Cae;
-        rm(i+1) = Rm;
-    % 8000 -> 12000 // Rm = Variavel e Cae = variavel
-    elseif i >= 160000 && i < 200000 % rampa de subida
-        Rm = -5e-7*i+0.18;
-        %Cae = 1.8e-3*i -136;
-        cae(i+1) = Cae;
-        rm(i+1) = Rm;
-    elseif i>= 200000 && i < 300000
-        Rm = 0.08;
-        rm(i+1) = Rm;
-    elseif i >= 300000 && i < 400000
-        Rm = 1e-7*i+0.05;
-        rm(i+1) = Rm;
-    elseif i>= 400000
-        Rm = 0.09;
-        rm(i+1) = Rm;
-    end
-end
 
-if i >= 600000 && i < 700000
-    rs(i) = -5e-6 * i + 4;
-elseif i>= 700000 && i < 800000
-    rs(i) = 0.5;
-elseif i >= 800000 && i<900000
-    rs(i) = 2.5e-6 * i - 1.5;
-elseif i >= 900000
-    rs(i) = 0.75;
-end
-Rs = rs(i);
+
+% Varia?ão da Pré-carga
+        if i < 160000 % 1a constante
+            Rm = 0.1;
+        elseif i >= 160000 && i < 200000 % rampa de subida
+            Rm = -5e-7*i+0.18;
+        elseif i>= 200000 && i < 300000
+            Rm = 0.08;
+        elseif i >= 300000 && i < 400000
+            Rm = -4e-7*i+0.2;
+        elseif i>= 400000
+            Rm = 0.04;
+        end
+    rm(i+1) = Rm;
+    
+    if i >= 600000 && i < 700000
+        rs(i) = -5e-6 * i + 4;
+    elseif i>= 700000 && i < 800000
+        rs(i) = 0.5;
+    elseif i >= 800000 && i<900000
+        rs(i) = 2.5e-6 * i - 1.5;
+    elseif i >= 900000
+        rs(i) = 0.75;
+    end
+    Rs = rs(i);
 
 w = (w_rpm(i)*2*pi/60); % rad/s
 
@@ -203,6 +199,13 @@ Qvad(i+1)= x(6);
 Da_(i+1) = Da;
 Dm_(i+1) = Dm;
 
+ if (i > ip)
+        fprintf('Executing ... \t%d %%\r',lg);
+        lg = lg + 10;
+        ip = ip + (n-1)/10;
+    end
+
+
 Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
 end
 EDP(i+1) = EDP(i);
@@ -211,21 +214,21 @@ rs(i+1) = 0.75;
 SP(i+1) = SP(i);
 
 % PIP plot
-% figure(1)
-% plot(T, SP, '-k','LineWidth', 2);
-% hold on
-% % plot(T,PIP, 'Color', '#777777');
-% plot(T,PIP, 'yellow');
-% ylim([0 120])
-% xlim([0 120])
-% xticks([0 20 30 40 60 70 80 90 120])
-% yticks([0 50 100 120])
-% legend('PIP', 'SP')
-% xlabel('Time (s)','interpreter','latex')
-% ylabel('Pressure (mmHg)','interpreter','latex')
-% set(gca,'FontSize',14)
-% set(gca,'fontname','times')
-% grid on
+%%
+figure(1)
+plot(T, SP, '-k','LineWidth', 2);
+hold on
+plot(T,PIP, 'Color', '#777777');
+ylim([0 120])
+xlim([0 120])
+xticks([0 20 30 40 60 70 80 90 120])
+yticks([0 50 100 120])
+legend('SP', 'PIP')
+xlabel('Time (s)','interpreter','latex')
+ylabel('Pressure (mmHg)','interpreter','latex')
+set(gca,'FontSize',14)
+set(gca,'fontname','times')
+grid on
 
 %%
 figure(1)

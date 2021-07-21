@@ -56,7 +56,7 @@ rs  = ones(1, length(T));
 
 %  constant speed
 %con tava menor eu aumentei 50
-w_rpm = 11570;
+w_rpm = 12720;
 wrads = (w_rpm*2*pi/60);
 w = wrads*ones(1, length(T));
 
@@ -103,7 +103,7 @@ lg = 0;
 % SPref = 55.85;
 % Nref = 10 krpm
 
-Qvad_int = 0;
+Qa_int = 0;
 count = 1;
 Cycle = zeros(1, length(T));
 Cycle(1) = 10;
@@ -134,20 +134,14 @@ for i = 1:n-1
     % Varia?ão da Pré-carga
     if i < 160000 % 1a constante
         Rm = 0.1;
-        cae(i+1) = Cae;
-        % 8000 -> 12000 // Rm = Variavel e Cae = variavel
     elseif i >= 160000 && i < 200000 % rampa de subida
         Rm = -5e-7*i+0.18;
-        rm(i+1) = Rm;
     elseif i>= 200000 && i < 300000
         Rm = 0.08;
-        rm(i+1) = Rm;
     elseif i >= 300000 && i < 400000
-        Rm = 1e-7*i+0.05;
-        rm(i+1) = Rm;
+        Rm = -4e-7*i+0.2;
     elseif i>= 400000
-        Rm = 0.09;
-        rm(i+1) = Rm;
+        Rm = 0.04;
     end
     
     if i >= 600000 && i < 700000
@@ -215,11 +209,11 @@ for i = 1:n-1
         ip = ip + (n-1)/10;
     end
     
-    Qvad_int = Qvad_int + Qvad(i)*passo;
+    Qa_int = Qa_int + Qa(i)*passo;
     
     if Cycle(i) == 10
-        CO = Qvad_int;
-        Qvad_int = Qvad_int*0;
+        CO = Qa_int;
+        Qa_int = Qa_int*0;
     end
     COvec(i) = CO*0.06;
     
