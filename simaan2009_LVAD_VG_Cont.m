@@ -7,7 +7,7 @@ tic
 %% Simulation Time;
 start_t = 0;
 passo   = 0.0001;
-end_t   = 2;
+end_t   = 5;
 
 %Uses the already created Time scale
 T = start_t:passo:end_t;
@@ -140,6 +140,7 @@ counter_erro = 1;
 counter_error_constant = 10000;
 COerr = 0;
 
+
 load('simaan2009_phy.mat')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for i = 1:n-1
@@ -225,7 +226,8 @@ for i = 1:n-1
     Tevec(i) = Te;
     
     % Função das variáveis de estado
-    xdot = xdot_fun_Te(x,E(i),Te);
+    [xdot, eig_a] = xdot_fun_Te(x,E(i),Te);
+    eis(i, :) = eig_a;
     
     PIP(i) = Pve(i) - Li*xdot(6,1) - Ri*x(6);
     if i > 1
@@ -286,6 +288,8 @@ for i = 1:n-1
     Qvad(i+1)= x(6);
     w(i+1) = x(7);
     
+    %eigen_vector(i+1) = eig(A); 
+    
     Pve(i+1) = E(i+1)*(Vve(i+1) - Vo);
     Qao(i+1) = (Pao(i+1) - Pve(i+1))/Ra;
     
@@ -307,9 +311,9 @@ PIP(i+1) = PIP(i);
 kspvec(i+1) = ksp;
 COerrvec(i+1) = COerr;
 COvec_vg = COvec;
-save('simaan2009_LVAD_VG_Cont.mat','COvec_vg','SP_vg')
+%save('simaan2009_LVAD_VG_Cont.mat','COvec_vg','SP_vg')
 
-SP_vg = SP;
+%SP_vg = SP;
 toc
 
 % figure(1)
@@ -319,47 +323,53 @@ toc
 % hold on
 % plot(T(1:600000),COvec_phy(1:600000))
 %%
-
-
-load('simaan2009_con.mat')
-load('simaan2009_LVAD_SP_Cont.mat')
-load('simaan2009_phy.mat')
-load('simaan2009_LVAD_VG_Cont.mat')
-%%
-clf
-plot(T, COvec_phy, '-', 'LineWidth', 4, 'Color', '#AAAAAA')
-hold on
-plot(T, COvec_sp, '-.k', 'LineWidth', 1.0)
-%hold on
-%plot(T, COvec_vg, '-k', 'LineWidth', 1.5)
-xlim([10 25])
-legend('Phy', 'SP')
-xlabel('time(s)', 'interpreter','latex')
-ylabel('CO (L/min)', 'interpreter','latex')
-set(gca,'FontSize',14)
-set(gca,'fontname','times')
-ylim([3.5 4.5])
-grid
+[row, column] = size(eis)
+for j=1:row
+    plot(eis(j,:), '.', 'Color', 'blue')
+    hold on
+end
 
 %%
 
-%%
-% plot(T, COvec_phy)
+% load('simaan2009_con.mat')
+% load('simaan2009_LVAD_SP_Cont.mat')
+% load('simaan2009_phy.mat')
+% load('simaan2009_LVAD_VG_Cont.mat')
+% %%
+% clf
+% plot(T, COvec_phy, '-', 'LineWidth', 4, 'Color', '#AAAAAA')
 % hold on
-% plot(T, COvec_vg)
-% hold on
-% plot(T, kspvec/3 - 2)
-% ylim([2.5 6])
-% xlim([10 110])
-
-disp('MSE - Constant Controller');
-mse(COvec_phy(10000:end),COvec_con(10000:end),2)
-
-disp('MSE - SP Controller');
-mse(COvec_phy(10000:end),COvec_sp(10000:end),2)
-
-disp('MSE - VG Controller');
-mse(COvec_phy(10000:end),COvec_vg(10000:end),2)
+% plot(T, COvec_sp, '-.k', 'LineWidth', 1.0)
+% %hold on
+% %plot(T, COvec_vg, '-k', 'LineWidth', 1.5)
+% xlim([10 25])
+% legend('Phy', 'SP')
+% xlabel('time(s)', 'interpreter','latex')
+% ylabel('CO (L/min)', 'interpreter','latex')
+% set(gca,'FontSize',14)
+% set(gca,'fontname','times')
+% ylim([3.5 4.5])
+% grid
+% 
+% %%
+% 
+% %%
+% % plot(T, COvec_phy)
+% % hold on
+% % plot(T, COvec_vg)
+% % hold on
+% % plot(T, kspvec/3 - 2)
+% % ylim([2.5 6])
+% % xlim([10 110])
+% 
+% disp('MSE - Constant Controller');
+% mse(COvec_phy(10000:end),COvec_con(10000:end),2)
+% 
+% disp('MSE - SP Controller');
+% mse(COvec_phy(10000:end),COvec_sp(10000:end),2)
+% 
+% disp('MSE - VG Controller');
+% mse(COvec_phy(10000:end),COvec_vg(10000:end),2)
 
 %%
 % rm(1) = 0.1;
